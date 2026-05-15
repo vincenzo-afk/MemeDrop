@@ -167,14 +167,16 @@ function createMemeCard(meme) {
   const badgeClass = getBadgeClass(meme.created);
   const badgeLabel = getBadgeLabel(meme.created);
 
+  // Proxy all card thumbnails so the browser never issues a blocked crossOrigin request
+  const proxiedThumb = getProxiedUrl(meme.url);
+
   card.innerHTML = `
     <div class="card-img-wrap">
       <img
         class="card-img"
-        src="${escapeHtml(meme.url)}"
+        src="${escapeHtml(proxiedThumb)}"
         alt="${escapeHtml(meme.title)}"
         loading="lazy"
-        crossOrigin="anonymous"
       />
     </div>
     <div class="card-info">

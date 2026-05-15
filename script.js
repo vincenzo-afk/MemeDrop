@@ -190,6 +190,32 @@ function showSkeletons() {
 /* =====================================================
    CARD CREATION
    ===================================================== */
+
+/**
+ * Turns a raw Reddit title into something readable.
+ * If the title is just the subreddit slug (e.g. "me_irl", "ProgrammerHumor")
+ * we convert the slug to Title Case words instead.
+ */
+function formatMemeTitle(title, subreddit) {
+  if (!title) return 'Meme';
+
+  // Normalise: strip underscores, lowercase for comparison
+  const slugify = s => (s || '').toLowerCase().replace(/[_\s]/g, '');
+  const isGeneric =
+    slugify(title) === slugify(subreddit) || // title === subreddit slug
+    title.trim().length < 4;                 // absurdly short
+
+  if (!isGeneric) return title;
+
+  // Convert subreddit CamelCase / underscore_slug → "Title Case Words"
+  const base = (subreddit || title);
+  return base
+    .replace(/_/g, ' ')                        // underscores → spaces
+    .replace(/([a-z])([A-Z])/g, '$1 $2')       // camelCase → spaces
+    .replace(/\b\w/g, c => c.toUpperCase())    // Title Case
+    .trim() || 'Meme';
+}
+
 function createMemeCard(meme) {
   const card = document.createElement('div');
   card.className = 'meme-card';
@@ -199,22 +225,17 @@ function createMemeCard(meme) {
 
   const badgeClass   = getBadgeClass(meme.created);
   const badgeLabel   = getBadgeLabel(meme.created);
+  const displayTitle = formatMemeTitle(meme.title, meme.subreddit);
   const proxiedThumb = getProxiedUrl(meme.url);
   const isGif        = meme.url && meme.url.toLowerCase().endsWith('.gif');
 
-  const sub      = meme.subreddit ? `r/${escapeHtml(meme.subreddit)}` : '';
-  const upsLabel  = meme.ups ? `▲ ${meme.ups.toLocaleString()}` : '';
-
   card.innerHTML = `
     <div class="card-img-wrap">
-      <img class="card-img" src="${escapeHtml(proxiedThumb)}" alt="${escapeHtml(meme.title)}" loading="lazy" />
+      <img class="card-img" src="${escapeHtml(proxiedThumb)}" alt="${escapeHtml(displayTitle)}" loading="lazy" />
       ${isGif ? '<span style="position:absolute;top:8px;left:8px;background:rgba(255,69,0,.9);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;">GIF</span>' : ''}
     </div>
     <div class="card-info">
-      <div class="card-text">
-        <span class="card-title">${escapeHtml(meme.title)}</span>
-        ${sub ? `<span class="card-sub">${sub}${upsLabel ? ` &nbsp;·&nbsp; ${upsLabel}` : ''}</span>` : ''}
-      </div>
+      <span class="card-title">${escapeHtml(displayTitle)}</span>
       <span class="badge ${badgeClass}">${badgeLabel}</span>
     </div>
   `;

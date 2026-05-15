@@ -689,7 +689,8 @@ body::before {
   gap: 7px;
 }
 
-.control-group label {
+.control-group label,
+.control-group .control-label {
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;

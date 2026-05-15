@@ -122,12 +122,14 @@ function bumpCounter() {
    ===================================================== */
 function mapMeme(m) {
   return {
-    title:    m.title,
-    url:      m.url,
-    postLink: m.postLink || null,
-    ups:      m.ups      || 0,
-    created:  m.created_utc || null,
-    source:   'reddit',
+    title:     m.title,
+    url:       m.url,
+    postLink:  m.postLink || null,
+    ups:       m.ups      || 0,
+    created:   m.created_utc || null,
+    source:    'reddit',
+    subreddit: m.subreddit || '',
+    author:    m.author   || '',
   };
 }
 
@@ -200,13 +202,19 @@ function createMemeCard(meme) {
   const proxiedThumb = getProxiedUrl(meme.url);
   const isGif        = meme.url && meme.url.toLowerCase().endsWith('.gif');
 
+  const sub      = meme.subreddit ? `r/${escapeHtml(meme.subreddit)}` : '';
+  const upsLabel  = meme.ups ? `▲ ${meme.ups.toLocaleString()}` : '';
+
   card.innerHTML = `
     <div class="card-img-wrap">
       <img class="card-img" src="${escapeHtml(proxiedThumb)}" alt="${escapeHtml(meme.title)}" loading="lazy" />
       ${isGif ? '<span style="position:absolute;top:8px;left:8px;background:rgba(255,69,0,.9);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;">GIF</span>' : ''}
     </div>
     <div class="card-info">
-      <span class="card-title">${escapeHtml(meme.title)}</span>
+      <div class="card-text">
+        <span class="card-title">${escapeHtml(meme.title)}</span>
+        ${sub ? `<span class="card-sub">${sub}${upsLabel ? ` &nbsp;·&nbsp; ${upsLabel}` : ''}</span>` : ''}
+      </div>
       <span class="badge ${badgeClass}">${badgeLabel}</span>
     </div>
   `;

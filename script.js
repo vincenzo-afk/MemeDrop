@@ -37,6 +37,16 @@ let currentMemes  = [];   // Full loaded memes for current tab
 let baseImage     = null; // Current HTMLImageElement for canvas
 let toastTimer    = null;
 
+/* ---------- Draggable Text State ---------- */
+let textState = {
+  top:    { x: 250, y: 50,  lines: [], fontSize: 36 },
+  bottom: { x: 250, y: 450, lines: [], fontSize: 36 }
+};
+let isDragging   = false;
+let dragTarget   = null; // 'top' or 'bottom'
+let startMouseX  = 0;
+let startMouseY  = 0;
+
 /* =====================================================
    UTILITY — Time Ago
    ===================================================== */
@@ -304,32 +314,40 @@ function wrapText(text, maxWidth, fontSize) {
   return lines;
 }
 
-function drawMemeText(text, position, fontSize, color) {
-  if (!text.trim()) return;
+/**
+ * Using a proxy for external images to ensure CORS headers are present.
+ * This prevents "tainted canvas" errors when downloading/copying.
+ */
+function getProxiedUrl(url) {
+  if (!url) return url;
+  if (url.startsWith('data:') || url.startsWith('blob:')) return url;
+  // images.weserv.nl is a reliable, high-performance image proxy
+  return `https://images.weserv.nl/?url=${encodeURIComponent(url)}`;
+}
+
+function drawMemeText(text, id, fontSize, color) {
+  if (!text.trim()) {
+    textState[id].lines = [];
+    return;
+  }
 
   const canvasW  = memeCanvas.width;
-  const canvasH  = memeCanvas.height;
   const padding  = 20;
   const maxWidth = canvasW - padding * 2;
 
   ctx.font        = `900 ${fontSize}px Impact, 'Arial Narrow', sans-serif`;
   ctx.textAlign   = 'center';
-  ctx.textBaseline = 'top';
+  ctx.textBaseline = 'middle';
 
   const lines     = wrapText(text.toUpperCase(), maxWidth, fontSize);
   const lineH     = fontSize * 1.15;
-  const totalH    = lines.length * lineH;
-
-  let startY;
-  if (position === 'top') {
-    startY = padding;
-  } else {
-    startY = canvasH - padding - totalH;
-  }
+  
+  textState[id].lines    = lines;
+  textState[id].fontSize = fontSize;
 
   lines.forEach((line, i) => {
-    const y = startY + i * lineH;
-    const x = canvasW / 2;
+    const y = textState[id].y + (i - (lines.length - 1) / 2) * lineH;
+    const x = textState[id].x;
 
     // Black stroke (outline)
     ctx.lineWidth   = Math.max(3, fontSize / 10);
@@ -372,6 +390,9 @@ function drawMeme() {
 
   drawMemeText(topText, 'top', fontSize, color);
   drawMemeText(botText, 'bottom', fontSize, color);
+
+  // Draw a subtle hint when dragging or hovering? 
+  // (Optional: could add a focus border)
 }
 
 /* =====================================================
@@ -380,16 +401,19 @@ function drawMeme() {
 function loadImageToCanvas(url) {
   return new Promise((resolve, reject) => {
     const img = new Image();
+    // Use proxy for all external URLs to avoid CORS "Tainted Canvas" issues
+    const proxiedUrl = getProxiedUrl(url);
+    
     img.crossOrigin = 'anonymous';
     img.onload  = () => { baseImage = img; resolve(); };
     img.onerror = () => {
-      // Try without crossOrigin as fallback (will prevent download on tainted canvas)
+      // Fallback if proxy fails
       const img2 = new Image();
       img2.onload  = () => { baseImage = img2; resolve(); };
       img2.onerror = reject;
       img2.src = url;
     };
-    img.src = url;
+    img.src = proxiedUrl;
   });
 }
 
@@ -402,6 +426,12 @@ async function openEditor(imageUrl) {
   fontColorInput.value  = '#ffffff';
   imageUpload.value     = '';
   fileNameSpan.textContent = 'No file chosen';
+
+  // Reset positions
+  textState.top.x = 250;
+  textState.top.y = 50;
+  textState.bottom.x = 250;
+  textState.bottom.y = 450;
 
   // Show modal first so canvas is visible
   modalOverlay.hidden = false;
@@ -609,6 +639,103 @@ imageUpload.addEventListener('change', e => {
 // --- Download & Copy ---
 downloadBtn.addEventListener('click', downloadMeme);
 copyBtn.addEventListener('click', copyMeme);
+
+// --- Drag and Drop on Canvas ---
+function getMousePos(e) {
+  const rect = memeCanvas.getBoundingClientRect();
+  const scaleX = memeCanvas.width / rect.width;
+  const scaleY = memeCanvas.height / rect.height;
+  
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+  return {
+    x: (clientX - rect.left) * scaleX,
+    y: (clientY - rect.top) * scaleY
+  };
+}
+
+function isMouseOverText(pos, id) {
+  const state = textState[id];
+  if (state.lines.length === 0) return false;
+
+  const lineH = state.fontSize * 1.15;
+  const totalH = state.lines.length * lineH;
+  
+  // Rough bounding box check
+  const halfH = totalH / 2;
+  const width = 400; // Assume a reasonable width for hit detection
+  
+  return (
+    pos.x > state.x - width/2 &&
+    pos.x < state.x + width/2 &&
+    pos.y > state.y - halfH &&
+    pos.y < state.y + halfH
+  );
+}
+
+function handleMouseDown(e) {
+  const pos = getMousePos(e);
+  
+  if (isMouseOverText(pos, 'top')) {
+    isDragging = true;
+    dragTarget = 'top';
+  } else if (isMouseOverText(pos, 'bottom')) {
+    isDragging = true;
+    dragTarget = 'bottom';
+  }
+
+  if (isDragging) {
+    startMouseX = pos.x;
+    startMouseY = pos.y;
+    memeCanvas.style.cursor = 'grabbing';
+  }
+}
+
+function handleMouseMove(e) {
+  const pos = getMousePos(e);
+
+  if (isDragging) {
+    const dx = pos.x - startMouseX;
+    const dy = pos.y - startMouseY;
+    
+    textState[dragTarget].x += dx;
+    textState[dragTarget].y += dy;
+    
+    startMouseX = pos.x;
+    startMouseY = pos.y;
+    
+    drawMeme();
+  } else {
+    // Update cursor
+    if (isMouseOverText(pos, 'top') || isMouseOverText(pos, 'bottom')) {
+      memeCanvas.style.cursor = 'move';
+    } else {
+      memeCanvas.style.cursor = 'default';
+    }
+  }
+}
+
+function handleMouseUp() {
+  isDragging = false;
+  dragTarget = null;
+  memeCanvas.style.cursor = 'default';
+}
+
+memeCanvas.addEventListener('mousedown', handleMouseDown);
+window.addEventListener('mousemove', handleMouseMove);
+window.addEventListener('mouseup', handleMouseUp);
+
+// Touch support
+memeCanvas.addEventListener('touchstart', e => {
+  if (e.target === memeCanvas) e.preventDefault();
+  handleMouseDown(e);
+}, { passive: false });
+window.addEventListener('touchmove', e => {
+  if (isDragging) e.preventDefault();
+  handleMouseMove(e);
+}, { passive: false });
+window.addEventListener('touchend', handleMouseUp);
 
 // --- Keyboard Shortcuts ---
 document.addEventListener('keydown', e => {

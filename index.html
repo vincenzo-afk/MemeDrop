@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MemeDrop 🔥</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Impact&family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ===== HEADER ===== -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">🔥</span>
+        <span class="logo-text">MemeDrop</span>
+      </div>
+      <div class="header-actions">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Toggle Dark/Light Mode">
+          <span class="theme-icon">☀️</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== MAIN ===== -->
+  <main class="main-content">
+
+    <!-- Filter Tabs -->
+    <nav class="filter-tabs" role="tablist">
+      <button class="tab-btn active" data-tab="fresh" role="tab" aria-selected="true">🔥 Fresh</button>
+      <button class="tab-btn" data-tab="programmer" role="tab" aria-selected="false">💻 ProgrammerHumor</button>
+      <button class="tab-btn" data-tab="dank" role="tab" aria-selected="false">💀 Dank</button>
+      <button class="tab-btn" data-tab="classic" role="tab" aria-selected="false">🏛️ Classic</button>
+    </nav>
+
+    <!-- Search Bar -->
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input
+        type="text"
+        id="searchInput"
+        class="search-input"
+        placeholder="Search memes by title..."
+        autocomplete="off"
+      />
+      <button class="search-clear" id="searchClear" aria-label="Clear search">✕</button>
+    </div>
+
+    <!-- Meme Grid -->
+    <div class="meme-grid" id="memeGrid">
+      <!-- Skeleton Cards injected by JS -->
+    </div>
+
+    <!-- Error Message -->
+    <div class="error-msg" id="errorMsg" hidden>
+      <span class="error-icon">😵</span>
+      <p>Failed to load memes. <button class="retry-btn" id="retryBtn">Try again</button></p>
+    </div>
+
+    <!-- Empty Search State -->
+    <div class="empty-msg" id="emptyMsg" hidden>
+      <span>🤷</span>
+      <p>No memes matched your search.</p>
+    </div>
+
+    <!-- Load More -->
+    <div class="load-more-wrap">
+      <button class="load-more-btn" id="loadMoreBtn">Load More Memes</button>
+    </div>
+
+  </main>
+
+  <!-- ===== MEME EDITOR MODAL ===== -->
+  <div class="modal-overlay" id="modalOverlay" hidden aria-modal="true" role="dialog" aria-label="Meme Editor">
+    <div class="modal-card">
+
+      <!-- Close Button -->
+      <button class="modal-close" id="modalClose" aria-label="Close editor">✕</button>
+
+      <h2 class="modal-title">✏️ Meme Editor</h2>
+
+      <div class="modal-body">
+
+        <!-- Canvas -->
+        <div class="canvas-wrap">
+          <canvas id="memeCanvas" width="500" height="500"></canvas>
+        </div>
+
+        <!-- Controls -->
+        <div class="editor-controls">
+
+          <div class="control-group">
+            <label for="topText">Top Text</label>
+            <input type="text" id="topText" class="text-input" placeholder="TOP TEXT" />
+          </div>
+
+          <div class="control-group">
+            <label for="bottomText">Bottom Text</label>
+            <input type="text" id="bottomText" class="text-input" placeholder="BOTTOM TEXT" />
+          </div>
+
+          <div class="control-row">
+            <div class="control-group half">
+              <label for="fontSize">Font Size: <span id="fontSizeVal">36</span>px</label>
+              <input type="range" id="fontSize" min="16" max="72" value="36" class="range-input" />
+            </div>
+            <div class="control-group half">
+              <label for="fontColor">Font Color</label>
+              <input type="color" id="fontColor" value="#ffffff" class="color-input" />
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label for="imageUpload">Replace Image</label>
+            <label class="file-label" for="imageUpload">
+              <span class="file-icon">📁</span> Choose File
+              <input type="file" id="imageUpload" accept="image/*" class="file-input" />
+            </label>
+            <span class="file-name" id="fileName">No file chosen</span>
+          </div>
+
+          <div class="editor-actions">
+            <button class="btn btn-download" id="downloadBtn">
+              <span>⬇️</span> Download PNG
+            </button>
+            <button class="btn btn-copy" id="copyBtn">
+              <span>📋</span> Copy to Clipboard
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== TOAST ===== -->
+  <div class="toast" id="toast" aria-live="polite"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>

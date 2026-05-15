@@ -168,6 +168,10 @@ async function fetchForTab(tab) {
     case 'fresh':      return fetchFreshMemes();
     case 'trending':   return fetchTrendingMemes();
     case 'programmer': return fetchSubredditMemes('ProgrammerHumor');
+    case 'gaming':     return fetchSubredditMemes('gaming');
+    case 'wholesome':  return fetchSubredditMemes('wholesomememes');
+    case 'shitpost':   return fetchSubredditMemes('shitposting');
+    case 'anime':      return fetchSubredditMemes('animemes');
     case 'dank':       return fetchSubredditMemes('dankmemes');
     case 'classic':    return fetchClassicMemes();
     default:           return fetchFreshMemes();
@@ -850,15 +854,22 @@ loadMoreBtn.addEventListener('click', async () => {
   loadMoreBtn.disabled = true;
   loadMoreBtn.innerHTML = '<span class="loading-spinner"></span> Loading...';
   try {
-    const more = await fetchForTab(currentTab);
+    let fresh = [];
+    let attempts = 0;
     const existing = new Set(currentMemes.map(m => m.url));
-    const fresh = more.filter(m => !existing.has(m.url));
+
+    while (fresh.length === 0 && attempts < 2) {
+      const more = await fetchForTab(currentTab);
+      fresh = more.filter(m => !existing.has(m.url));
+      attempts++;
+    }
+
     if (fresh.length > 0) {
       currentMemes = [...currentMemes, ...fresh];
       appendMemeCards(fresh);
       if (searchInput.value.trim()) filterMemesBySearch(searchInput.value);
     } else {
-      showToast('No new memes found. Try another tab!');
+      showToast('No new memes found right now. Try another tab!');
     }
   } catch (e) {
     showToast('❌ Failed to load more.');

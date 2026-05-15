@@ -334,7 +334,7 @@ body::before {
 .card-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   transition: transform 0.4s ease;
   display: block;
 }
@@ -947,3 +947,232 @@ body::before {
     font-size: 22px;
   }
 }
+
+/* ---------- Meme Counter Badge ---------- */
+.meme-counter {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--card-bg);
+  border: 2px solid var(--card-border);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  transition: all var(--transition);
+  user-select: none;
+}
+.meme-counter .counter-icon { font-size: 15px; }
+.meme-counter.bump {
+  animation: bump 0.35s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes bump {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+/* ---------- GIF Badge ---------- */
+.gif-badge {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255,69,0,0.9);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 12px;
+  border-radius: 999px;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+#canvasWrap { position: relative; }
+
+/* ---------- Text Style Buttons ---------- */
+.btn-row {
+  display: flex;
+  gap: 8px;
+}
+.style-btn {
+  flex: 1;
+  padding: 9px 0;
+  border-radius: 10px;
+  border: 2px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  outline: none;
+}
+.style-btn.active,
+.style-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(255,69,0,0.08);
+}
+
+/* ---------- Filter Pills ---------- */
+.filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.filter-pill {
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 2px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  outline: none;
+}
+.filter-pill.active,
+.filter-pill:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(255,69,0,0.08);
+}
+
+/* ---------- Sticker Row ---------- */
+.sticker-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sticker-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 2px solid var(--input-border);
+  background: var(--input-bg);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+  outline: none;
+}
+.sticker-btn:hover {
+  border-color: var(--accent);
+  background: rgba(255,69,0,0.08);
+  transform: scale(1.15);
+}
+.sticker-btn.remove-sticker {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.sticker-btn.remove-sticker:hover { color: var(--accent); }
+
+/* ---------- Chain / Share Buttons ---------- */
+.chain-btn {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 2px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  outline: none;
+  white-space: nowrap;
+}
+.chain-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(255,69,0,0.08);
+}
+.chain-btn.danger:hover {
+  border-color: #e53935;
+  color: #e53935;
+  background: rgba(229,57,53,0.08);
+}
+
+/* ---------- Save to Gallery Button ---------- */
+.btn-save {
+  background: #22c55e;
+  color: #ffffff;
+  box-shadow: 0 4px 16px rgba(34,197,94,0.3);
+}
+.btn-save:hover {
+  background: #16a34a;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(34,197,94,0.4);
+}
+
+/* ---------- Gallery Section ---------- */
+.gallery-section { margin-top: 8px; }
+.gallery-empty {
+  text-align: center;
+  padding: 64px 24px;
+  color: var(--text-muted);
+  font-size: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.gallery-empty span { font-size: 48px; }
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+@media (max-width: 900px) { .gallery-grid { grid-template-columns: repeat(2,1fr); } }
+@media (max-width: 480px) { .gallery-grid { grid-template-columns: 1fr; } }
+
+.gallery-card {
+  background: var(--card-bg);
+  border-radius: 16px;
+  border: 1px solid var(--card-border);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.gallery-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+}
+.gallery-card img {
+  width: 100%;
+  aspect-ratio: 1/1;
+  object-fit: contain;
+  background: #111;
+  display: block;
+}
+.gallery-card-actions {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+}
+.gallery-action-btn {
+  flex: 1;
+  padding: 7px 0;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background: var(--input-bg);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: all var(--transition);
+  outline: none;
+}
+.gallery-action-btn:hover { border-color: var(--accent); color: var(--accent); }
+.gallery-action-btn.del:hover { border-color: #e53935; color: #e53935; }

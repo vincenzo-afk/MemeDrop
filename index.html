@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MemeDrop 🔥</title>
+  <title>MemeDrop 🔥 — Meme Generator & Gallery</title>
+  <meta name="description" content="MemeDrop: browse trending memes, add custom text, stickers, and save to your personal gallery." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -19,6 +20,11 @@
         <span class="logo-text">MemeDrop</span>
       </div>
       <div class="header-actions">
+        <!-- Meme Counter Badge -->
+        <div class="meme-counter" id="memeCounter" title="Memes generated this session">
+          <span class="counter-icon">🎨</span>
+          <span class="counter-val" id="counterVal">0</span>
+        </div>
         <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Toggle Dark/Light Mode">
           <span class="theme-icon">☀️</span>
         </button>
@@ -31,10 +37,12 @@
 
     <!-- Filter Tabs -->
     <nav class="filter-tabs" role="tablist">
-      <button class="tab-btn active" data-tab="fresh" role="tab" aria-selected="true">🔥 Fresh</button>
-      <button class="tab-btn" data-tab="programmer" role="tab" aria-selected="false">💻 ProgrammerHumor</button>
-      <button class="tab-btn" data-tab="dank" role="tab" aria-selected="false">💀 Dank</button>
-      <button class="tab-btn" data-tab="classic" role="tab" aria-selected="false">🏛️ Classic</button>
+      <button class="tab-btn active" data-tab="fresh"      role="tab" aria-selected="true">🔥 Fresh</button>
+      <button class="tab-btn"        data-tab="trending"   role="tab" aria-selected="false">📈 Trending</button>
+      <button class="tab-btn"        data-tab="programmer" role="tab" aria-selected="false">💻 Programmer</button>
+      <button class="tab-btn"        data-tab="dank"       role="tab" aria-selected="false">💀 Dank</button>
+      <button class="tab-btn"        data-tab="classic"    role="tab" aria-selected="false">🏛️ Classic</button>
+      <button class="tab-btn"        data-tab="gallery"    role="tab" aria-selected="false">💾 My Gallery</button>
     </nav>
 
     <!-- Search Bar -->
@@ -52,7 +60,16 @@
 
     <!-- Meme Grid -->
     <div class="meme-grid" id="memeGrid">
-      <!-- Skeleton Cards injected by JS -->
+      <!-- Cards injected by JS -->
+    </div>
+
+    <!-- Gallery Grid (hidden by default) -->
+    <div class="gallery-section" id="gallerySection" hidden>
+      <div class="gallery-empty" id="galleryEmpty" hidden>
+        <span>🖼️</span>
+        <p>No saved memes yet. Generate one and click <strong>Save to Gallery</strong>!</p>
+      </div>
+      <div class="gallery-grid" id="galleryGrid"></div>
     </div>
 
     <!-- Error Message -->
@@ -68,7 +85,7 @@
     </div>
 
     <!-- Load More -->
-    <div class="load-more-wrap">
+    <div class="load-more-wrap" id="loadMoreWrap">
       <button class="load-more-btn" id="loadMoreBtn">Load More Memes</button>
     </div>
 
@@ -86,13 +103,16 @@
       <div class="modal-body">
 
         <!-- Canvas -->
-        <div class="canvas-wrap">
+        <div class="canvas-wrap" id="canvasWrap">
           <canvas id="memeCanvas" width="500" height="500"></canvas>
+          <!-- GIF indicator -->
+          <div class="gif-badge" id="gifBadge" hidden>GIF — Canvas is static snapshot</div>
         </div>
 
         <!-- Controls -->
         <div class="editor-controls">
 
+          <!-- Text Inputs -->
           <div class="control-group">
             <label for="topText">Top Text</label>
             <input type="text" id="topText" class="text-input" placeholder="TOP TEXT" />
@@ -103,6 +123,7 @@
             <input type="text" id="bottomText" class="text-input" placeholder="BOTTOM TEXT" />
           </div>
 
+          <!-- Font Size + Color -->
           <div class="control-row">
             <div class="control-group half">
               <label for="fontSize">Font Size: <span id="fontSizeVal">36</span>px</label>
@@ -114,6 +135,55 @@
             </div>
           </div>
 
+          <!-- Text Style Toggle -->
+          <div class="control-group">
+            <label>Text Style</label>
+            <div class="btn-row">
+              <button class="style-btn active" id="styleOutline">⬛ Outline</button>
+              <button class="style-btn" id="styleShadow">🌑 Shadow</button>
+            </div>
+          </div>
+
+          <!-- Image Filter -->
+          <div class="control-group">
+            <label>Image Filter</label>
+            <div class="filter-pills" id="filterPills">
+              <button class="filter-pill active" data-filter="none">Original</button>
+              <button class="filter-pill" data-filter="grayscale(100%)">B&W</button>
+              <button class="filter-pill" data-filter="sepia(100%)">Sepia</button>
+              <button class="filter-pill" data-filter="contrast(200%)">Contrast</button>
+              <button class="filter-pill" data-filter="blur(3px)">Blur</button>
+              <button class="filter-pill" data-filter="saturate(300%)">Vivid</button>
+            </div>
+          </div>
+
+          <!-- Sticker Overlay -->
+          <div class="control-group">
+            <label>Add Sticker</label>
+            <div class="sticker-row" id="stickerRow">
+              <button class="sticker-btn" data-sticker="😎" title="Sunglasses">😎</button>
+              <button class="sticker-btn" data-sticker="🔥" title="Fire">🔥</button>
+              <button class="sticker-btn" data-sticker="💀" title="Skull">💀</button>
+              <button class="sticker-btn" data-sticker="💯" title="100">💯</button>
+              <button class="sticker-btn" data-sticker="🤣" title="ROFL">🤣</button>
+              <button class="sticker-btn" data-sticker="🐸" title="Frog">🐸</button>
+              <button class="sticker-btn" data-sticker="🍕" title="Pizza">🍕</button>
+              <button class="sticker-btn" data-sticker="⚡" title="Zap">⚡</button>
+              <button class="sticker-btn remove-sticker" id="clearStickers" title="Clear stickers">✕</button>
+            </div>
+          </div>
+
+          <!-- Meme Chain -->
+          <div class="control-group">
+            <label>Meme Chain (Two-Panel)</label>
+            <div class="btn-row">
+              <button class="chain-btn" id="chainBtn">🔗 Add Second Panel</button>
+              <button class="chain-btn danger" id="clearChainBtn" hidden>🗑 Remove Panel</button>
+            </div>
+            <input type="text" id="chainImageUrl" class="text-input" placeholder="Second panel image URL..." style="margin-top:6px;" />
+          </div>
+
+          <!-- Replace Image -->
           <div class="control-group">
             <label for="imageUpload">Replace Image</label>
             <label class="file-label" for="imageUpload">
@@ -123,12 +193,24 @@
             <span class="file-name" id="fileName">No file chosen</span>
           </div>
 
+          <!-- Shareable URL -->
+          <div class="control-group">
+            <label>Shareable Link</label>
+            <div class="btn-row">
+              <button class="chain-btn" id="shareBtn">🔗 Copy Share URL</button>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
           <div class="editor-actions">
             <button class="btn btn-download" id="downloadBtn">
               <span>⬇️</span> Download PNG
             </button>
             <button class="btn btn-copy" id="copyBtn">
               <span>📋</span> Copy to Clipboard
+            </button>
+            <button class="btn btn-save" id="saveGalleryBtn">
+              <span>💾</span> Save to Gallery
             </button>
           </div>
 

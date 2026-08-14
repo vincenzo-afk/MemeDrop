@@ -1,953 +1,659 @@
 'use strict';
 
-/* =====================================================
-   DOM REFERENCES
-   ===================================================== */
-const memeGrid        = document.getElementById('memeGrid');
-const searchInput     = document.getElementById('searchInput');
-const searchClear     = document.getElementById('searchClear');
-const loadMoreBtn     = document.getElementById('loadMoreBtn');
-const loadMoreWrap    = document.getElementById('loadMoreWrap');
-const themeToggle     = document.getElementById('themeToggle');
-const themeIcon       = themeToggle.querySelector('.theme-icon');
-const modalOverlay    = document.getElementById('modalOverlay');
-const modalClose      = document.getElementById('modalClose');
-const memeCanvas      = document.getElementById('memeCanvas');
-const ctx             = memeCanvas.getContext('2d');
-const topTextInput    = document.getElementById('topText');
-const bottomTextInput = document.getElementById('bottomText');
-const fontSizeInput   = document.getElementById('fontSize');
-const fontSizeVal     = document.getElementById('fontSizeVal');
-const fontColorInput  = document.getElementById('fontColor');
-const imageUpload     = document.getElementById('imageUpload');
-const fileNameSpan    = document.getElementById('fileName');
-const downloadBtn     = document.getElementById('downloadBtn');
-const copyBtn         = document.getElementById('copyBtn');
-const saveGalleryBtn  = document.getElementById('saveGalleryBtn');
-const toast           = document.getElementById('toast');
-const errorMsg        = document.getElementById('errorMsg');
-const emptyMsg        = document.getElementById('emptyMsg');
-const retryBtn        = document.getElementById('retryBtn');
-const tabBtns         = document.querySelectorAll('.tab-btn');
-const counterVal      = document.getElementById('counterVal');
-const memeCounter     = document.getElementById('memeCounter');
-const gifBadge        = document.getElementById('gifBadge');
-const styleOutlineBtn = document.getElementById('styleOutline');
-const styleShadowBtn  = document.getElementById('styleShadow');
-const filterPills     = document.getElementById('filterPills');
-const stickerRow      = document.getElementById('stickerRow');
-const clearStickersBtn= document.getElementById('clearStickers');
-const chainBtn        = document.getElementById('chainBtn');
-const clearChainBtn   = document.getElementById('clearChainBtn');
-const chainImageUrl   = document.getElementById('chainImageUrl');
-const shareBtn        = document.getElementById('shareBtn');
-const gallerySection  = document.getElementById('gallerySection');
-const galleryEmpty    = document.getElementById('galleryEmpty');
-const galleryGrid     = document.getElementById('galleryGrid');
+/* MemeDrop — Dark Editorial Collage. Keep discovery tactile, actions warm, and controls fast to scan. */
 
-/* =====================================================
-   GLOBAL STATE
-   ===================================================== */
-let currentTab    = 'fresh';
-let currentMemes  = [];
-let baseImage     = null;
-let chainImage    = null;   // second panel image
-let toastTimer    = null;
-let sessionCount  = 0;
-let textShadow    = false;  // false = outline, true = drop-shadow
-let activeFilter  = 'none';
-let stickers      = [];     // [{emoji, x, y, size}]
+const $ = id => document.getElementById(id);
+const memeGrid = $('memeGrid');
+const searchInput = $('searchInput');
+const searchClear = $('searchClear');
+const themeToggle = $('themeToggle');
+const themeIcon = themeToggle.querySelector('.theme-icon');
+const modalOverlay = $('modalOverlay');
+const modalClose = $('modalClose');
+const memeCanvas = $('memeCanvas');
+const canvasWrap = $('canvasWrap');
+const ctx = memeCanvas.getContext('2d');
+const topTextInput = $('topText');
+const bottomTextInput = $('bottomText');
+const fontSizeInput = $('fontSize');
+const fontSizeVal = $('fontSizeVal');
+const fontColorInput = $('fontColor');
+const imageUpload = $('imageUpload');
+const fileNameSpan = $('fileName');
+const downloadBtn = $('downloadBtn');
+const copyBtn = $('copyBtn');
+const saveGalleryBtn = $('saveGalleryBtn');
+const toast = $('toast');
+const errorMsg = $('errorMsg');
+const emptyMsg = $('emptyMsg');
+const retryBtn = $('retryBtn');
+const tabBtns = document.querySelectorAll('.tab-btn');
+const counterVal = $('counterVal');
+const memeCounter = $('memeCounter');
+const gifBadge = $('gifBadge');
+const storyBadge = $('storyBadge');
+const styleOutlineBtn = $('styleOutline');
+const styleShadowBtn = $('styleShadow');
+const filterPills = $('filterPills');
+const stickerRow = $('stickerRow');
+const clearStickersBtn = $('clearStickers');
+const chainBtn = $('chainBtn');
+const clearChainBtn = $('clearChainBtn');
+const chainImageUrl = $('chainImageUrl');
+const shareBtn = $('shareBtn');
+const embedBtn = $('embedBtn');
+const gallerySection = $('gallerySection');
+const galleryEmpty = $('galleryEmpty');
+const galleryGrid = $('galleryGrid');
+const subredditInput = $('subredditInput');
+const subredditLoadBtn = $('subredditLoadBtn');
+const keywordHeatmap = $('keywordHeatmap');
+const clearTagBtn = $('clearTagBtn');
+const activeFilterRow = $('activeFilterRow');
+const activeTagLabel = $('activeTagLabel');
+const infiniteScrollSentinel = $('infiniteScrollSentinel');
+const infiniteScrollLabel = $('infiniteScrollLabel');
+const shareXBtn = $('shareXBtn');
+const shareWhatsAppBtn = $('shareWhatsAppBtn');
+const shareRedditBtn = $('shareRedditBtn');
+const nativeShareBtn = $('nativeShareBtn');
+const storyExportBtn = $('storyExportBtn');
+const embedOverlay = $('embedOverlay');
+const embedClose = $('embedClose');
+const embedType = $('embedType');
+const embedCode = $('embedCode');
+const copyEmbedBtn = $('copyEmbedBtn');
+
+let currentTab = 'fresh';
+let currentMemes = [];
+let baseImage = null;
+let chainImage = null;
 let currentImageUrl = '';
-
-/* Draggable items: text labels + stickers share one system */
-let isDragging  = false;
-let dragTarget  = null; // 'top' | 'bottom' | sticker index number
-let startMouseX = 0;
-let startMouseY = 0;
+let currentMemeTitle = 'MemeDrop meme';
+let toastTimer = null;
+let sessionCount = 0;
+let textShadow = false;
+let activeFilter = 'none';
+let activeTag = '';
+let stickers = [];
+let isLoadingMore = false;
+let hasMore = true;
+let storyMode = false;
+let gifPlayer = null;
+let gifFrameTimer = null;
 
 let textState = {
-  top:    { x: 250, y: 44,  lines: [], fontSize: 36 },
+  top: { x: 250, y: 44, lines: [], fontSize: 36 },
   bottom: { x: 250, y: 456, lines: [], fontSize: 36 },
 };
 
-/* =====================================================
-   UTILITIES
-   ===================================================== */
+let isDragging = false;
+let dragTarget = null;
+let startMouseX = 0;
+let startMouseY = 0;
+
+const STOP_WORDS = new Set('a an and are as at be by for from has have i in is it me my of on or our so that the their this to was we with you your vs meme memes just not no its im its own oc today when what who why how very more less all new one two this'.split(' '));
+const TAG_ALIASES = {
+  programmerhumor: ['code', 'programming', 'developer'],
+  gaming: ['gaming', 'games'],
+  wholesome: ['wholesome', 'feelgood'],
+  shitposting: ['shitpost', 'chaos'],
+  animemes: ['anime', 'animemes'],
+  dankmemes: ['dank', 'absurd'],
+  me_irl: ['relatable'],
+};
+const TAG_CACHE_KEY = 'memedrop-tag-cache-v1';
+const GALLERY_KEY = 'memedrop-gallery';
+
 function escapeHtml(str) {
-  if (!str) return '';
-  return String(str)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function getProxiedUrl(url) {
-  if (!url) return url;
-  if (url.startsWith('data:') || url.startsWith('blob:')) return url;
+  if (!url || url.startsWith('data:') || url.startsWith('blob:')) return url;
   return `https://images.weserv.nl/?url=${encodeURIComponent(url)}`;
 }
 
-function getBadgeClass(utcSeconds) {
-  if (!utcSeconds) return 'badge-classic';
-  const diff = Math.floor(Date.now() / 1000) - utcSeconds;
-  if (diff < 3600)  return 'badge-fresh';
-  if (diff < 86400) return 'badge-recent';
-  return 'badge-old';
-}
-
-function getBadgeLabel(utcSeconds) {
-  if (!utcSeconds) return 'Classic';
-  const diff = Math.floor(Date.now() / 1000) - utcSeconds;
-  if (diff < 3600)  return '🟢 Fresh';
-  if (diff < 86400) return '🟡 Recent';
-  return '⚫ Old';
-}
-
 function showToast(message) {
-  if (toastTimer) clearTimeout(toastTimer);
+  clearTimeout(toastTimer);
   toast.textContent = message;
   toast.classList.add('visible');
   toastTimer = setTimeout(() => toast.classList.remove('visible'), 2800);
 }
 
 function bumpCounter() {
-  sessionCount++;
-  counterVal.textContent = sessionCount;
+  sessionCount += 1;
+  counterVal.textContent = String(sessionCount);
   memeCounter.classList.remove('bump');
-  void memeCounter.offsetWidth; // reflow to restart animation
+  void memeCounter.offsetWidth;
   memeCounter.classList.add('bump');
 }
 
-/* =====================================================
-   API — FETCH
-   ===================================================== */
+function getBadgeClass(utcSeconds) {
+  if (!utcSeconds) return 'badge-classic';
+  const diff = Math.floor(Date.now() / 1000) - utcSeconds;
+  return diff < 3600 ? 'badge-fresh' : diff < 86400 ? 'badge-recent' : 'badge-old';
+}
+
+function getBadgeLabel(utcSeconds) {
+  if (!utcSeconds) return 'Classic';
+  const diff = Math.floor(Date.now() / 1000) - utcSeconds;
+  return diff < 3600 ? '🟢 Fresh' : diff < 86400 ? '🟡 Recent' : '⚫ Old';
+}
+
+function extractTags(title, subreddit = '', flair = '') {
+  const rawWords = `${title || ''} ${flair || ''}`.toLowerCase().replace(/[^a-z0-9_ ]/g, ' ').split(/\s+/);
+  const tags = new Set();
+  rawWords.forEach(word => {
+    if (word.length >= 3 && !STOP_WORDS.has(word)) tags.add(word);
+  });
+  const sub = subreddit.toLowerCase();
+  tags.add(sub);
+  (TAG_ALIASES[sub] || []).forEach(tag => tags.add(tag));
+  return [...tags].slice(0, 18);
+}
+
+function readTagCache() {
+  try { return JSON.parse(localStorage.getItem(TAG_CACHE_KEY)) || {}; } catch { return {}; }
+}
+
+function cacheMemeTags(memes) {
+  const cache = readTagCache();
+  memes.forEach(meme => { if (meme.url) cache[meme.url] = meme.tags || []; });
+  const entries = Object.entries(cache).slice(-300);
+  localStorage.setItem(TAG_CACHE_KEY, JSON.stringify(Object.fromEntries(entries)));
+}
+
 function mapMeme(m) {
+  const title = m.title || 'Meme';
+  const subreddit = m.subreddit || '';
+  const cachedTags = readTagCache()[m.url] || [];
   return {
-    title:     m.title,
-    url:       m.url,
-    postLink:  m.postLink || null,
-    ups:       m.ups      || 0,
-    created:   m.created_utc || null,
-    source:    'reddit',
-    subreddit: m.subreddit || '',
-    author:    m.author   || '',
+    title,
+    url: m.url,
+    postLink: m.postLink || null,
+    ups: m.ups || 0,
+    created: m.created_utc || null,
+    source: 'reddit',
+    subreddit,
+    author: m.author || '',
+    flair: m.flair || m.link_flair_text || '',
+    tags: [...new Set([...cachedTags, ...extractTags(title, subreddit, m.flair || m.link_flair_text || '')])].slice(0, 24),
   };
 }
 
-async function fetchFreshMemes() {
-  const res  = await fetch('https://meme-api.com/gimme/20');
+async function fetchJson(url) {
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
-  return data.memes.map(mapMeme);
+  return res.json();
 }
 
-async function fetchTrendingMemes() {
-  const res  = await fetch('https://meme-api.com/gimme/40');
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
-  return data.memes.map(mapMeme).sort((a, b) => b.ups - a.ups);
-}
-
+async function fetchFreshMemes() { return (await fetchJson('https://meme-api.com/gimme/20')).memes.map(mapMeme); }
+async function fetchTrendingMemes() { return (await fetchJson('https://meme-api.com/gimme/40')).memes.map(mapMeme).sort((a, b) => b.ups - a.ups); }
 async function fetchSubredditMemes(subreddit) {
-  const res  = await fetch(`https://meme-api.com/gimme/${subreddit}/20`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
-  return data.memes.map(mapMeme);
+  const safeSubreddit = subreddit.trim().replace(/^r\//i, '').replace(/[^a-zA-Z0-9_]+/g, '');
+  if (!safeSubreddit) throw new Error('Enter a subreddit');
+  return (await fetchJson(`https://meme-api.com/gimme/${encodeURIComponent(safeSubreddit)}/20`)).memes.map(mapMeme);
 }
-
 async function fetchClassicMemes() {
-  const res  = await fetch('https://api.imgflip.com/get_memes');
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
-  return data.data.memes.map(m => ({
-    title: m.name, url: m.url, postLink: null, ups: null, created: null, source: 'classic',
-  }));
+  const data = await fetchJson('https://api.imgflip.com/get_memes');
+  return data.data.memes.map(m => ({ title: m.name, url: m.url, postLink: null, ups: null, created: null, source: 'classic', subreddit: 'imgflip', tags: extractTags(m.name, 'imgflip') }));
 }
-
 async function fetchForTab(tab) {
   switch (tab) {
-    case 'fresh':      return fetchFreshMemes();
-    case 'trending':   return fetchTrendingMemes();
+    case 'fresh': return fetchFreshMemes();
+    case 'trending': return fetchTrendingMemes();
     case 'programmer': return fetchSubredditMemes('ProgrammerHumor');
-    case 'gaming':     return fetchSubredditMemes('gaming');
-    case 'wholesome':  return fetchSubredditMemes('wholesomememes');
-    case 'shitpost':   return fetchSubredditMemes('shitposting');
-    case 'anime':      return fetchSubredditMemes('animemes');
-    case 'dank':       return fetchSubredditMemes('dankmemes');
-    case 'classic':    return fetchClassicMemes();
-    default:           return fetchFreshMemes();
+    case 'gaming': return fetchSubredditMemes('gaming');
+    case 'wholesome': return fetchSubredditMemes('wholesomememes');
+    case 'shitpost': return fetchSubredditMemes('shitposting');
+    case 'anime': return fetchSubredditMemes('animemes');
+    case 'dank': return fetchSubredditMemes('dankmemes');
+    case 'classic': return fetchClassicMemes();
+    case 'custom': return fetchSubredditMemes(subredditInput.value);
+    default: return fetchFreshMemes();
   }
 }
 
-/* =====================================================
-   SKELETON LOADERS
-   ===================================================== */
 function showSkeletons() {
   memeGrid.innerHTML = '';
-  for (let i = 0; i < 6; i++) {
-    const sk = document.createElement('div');
-    sk.className = 'skeleton-card';
-    sk.innerHTML = `<div class="skeleton-img"></div><div class="skeleton-info"><div class="skeleton-line"></div><div class="skeleton-line"></div></div>`;
-    memeGrid.appendChild(sk);
+  for (let i = 0; i < 6; i += 1) {
+    const skeleton = document.createElement('div');
+    skeleton.className = 'skeleton-card';
+    skeleton.innerHTML = '<div class="skeleton-img"></div><div class="skeleton-info"><div class="skeleton-line"></div><div class="skeleton-line"></div></div>';
+    memeGrid.appendChild(skeleton);
   }
 }
-
-/* =====================================================
-   CARD CREATION
-   ===================================================== */
 
 function createMemeCard(meme) {
   const card = document.createElement('div');
   card.className = 'meme-card';
   card.setAttribute('role', 'button');
   card.setAttribute('tabindex', '0');
-  const actualTitle = meme.title || 'Meme';
-  card.setAttribute('aria-label', `Edit meme: ${actualTitle}`);
-
-  const badgeClass   = getBadgeClass(meme.created);
-  const badgeLabel   = getBadgeLabel(meme.created);
-  const proxiedThumb = getProxiedUrl(meme.url);
-  const isGif        = meme.url && meme.url.toLowerCase().endsWith('.gif');
-
+  const title = meme.title || 'Meme';
+  const imageUrl = getProxiedUrl(meme.url);
+  const isGif = /\.gif(?:\?|$)/i.test(meme.url || '');
+  card.setAttribute('aria-label', `Edit meme: ${title}`);
+  const visibleTags = (meme.tags || []).filter(tag => tag !== meme.subreddit?.toLowerCase()).slice(0, 3);
   card.innerHTML = `
     <div class="card-img-wrap">
-      <img class="card-img" src="${escapeHtml(proxiedThumb)}" alt="${escapeHtml(actualTitle)}" loading="lazy" />
-      ${isGif ? '<span style="position:absolute;top:8px;left:8px;background:rgba(255,69,0,.9);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;">GIF</span>' : ''}
+      <img class="card-img" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(title)}" loading="lazy" />
+      ${isGif ? '<span class="card-gif-badge">GIF</span>' : ''}
     </div>
     <div class="card-info">
-      <span class="card-title">${escapeHtml(actualTitle)}</span>
-      <span class="badge ${badgeClass}">${badgeLabel}</span>
-    </div>
-  `;
-
-  const openEdit = () => openEditor(meme.url);
-  card.addEventListener('click', openEdit);
-  card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEdit(); } });
-
+      <span class="card-title">${escapeHtml(title)}</span>
+      <div class="card-subline"><span>${meme.subreddit ? `r/${escapeHtml(meme.subreddit)}` : 'MemeDrop'}</span><span class="badge ${getBadgeClass(meme.created)}">${getBadgeLabel(meme.created)}</span></div>
+      <div class="card-tags">${visibleTags.map(tag => `<button class="card-tag" type="button" data-tag="${escapeHtml(tag)}">#${escapeHtml(tag)}</button>`).join('')}</div>
+    </div>`;
+  const openEdit = () => openEditor(meme.url, meme.title);
+  card.addEventListener('click', e => { if (!e.target.closest('.card-tag')) openEdit(); });
+  card.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && !e.target.closest('.card-tag')) { e.preventDefault(); openEdit(); } });
+  card.querySelectorAll('.card-tag').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); setActiveTag(btn.dataset.tag); }));
   const img = card.querySelector('.card-img');
-  img.addEventListener('error', () => {
-    img.parentElement.innerHTML = `<div style="width:100%;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;color:#555;font-size:32px;background:#111;">🖼️</div>`;
-  });
-
+  img.addEventListener('error', () => { img.parentElement.innerHTML = '<div class="image-fallback">🖼️</div>'; });
   return card;
 }
 
-/* =====================================================
-   RENDERING
-   ===================================================== */
-function renderMemeCards(arr) {
+function renderMemeCards(memes) {
   memeGrid.innerHTML = '';
   errorMsg.hidden = true;
   emptyMsg.hidden = true;
-  if (!arr || arr.length === 0) { emptyMsg.hidden = false; return; }
-  const frag = document.createDocumentFragment();
-  arr.forEach(m => frag.appendChild(createMemeCard(m)));
-  memeGrid.appendChild(frag);
+  if (!memes?.length) { emptyMsg.hidden = false; return; }
+  const fragment = document.createDocumentFragment();
+  memes.forEach(meme => fragment.appendChild(createMemeCard(meme)));
+  memeGrid.appendChild(fragment);
 }
 
-function appendMemeCards(arr) {
-  if (!arr || arr.length === 0) return;
-  const frag = document.createDocumentFragment();
-  arr.forEach(m => frag.appendChild(createMemeCard(m)));
-  memeGrid.appendChild(frag);
+function appendMemeCards(memes) {
+  if (!memes?.length) return;
+  const fragment = document.createDocumentFragment();
+  memes.forEach(meme => fragment.appendChild(createMemeCard(meme)));
+  memeGrid.appendChild(fragment);
 }
 
-function showError() {
-  memeGrid.innerHTML = '';
-  errorMsg.hidden = false;
-  emptyMsg.hidden = true;
+function getVisibleMemes() {
+  const query = searchInput.value.trim().toLowerCase();
+  return currentMemes.filter(meme => {
+    const matchesSearch = !query || meme.title.toLowerCase().includes(query) || (meme.tags || []).some(tag => tag.includes(query));
+    const matchesTag = !activeTag || (meme.tags || []).includes(activeTag);
+    return matchesSearch && matchesTag;
+  });
 }
 
-function filterMemesBySearch(query) {
-  if (!query.trim()) { renderMemeCards(currentMemes); return; }
-  const q = query.trim().toLowerCase();
-  const filtered = currentMemes.filter(m => m.title && m.title.toLowerCase().includes(q));
-  if (filtered.length === 0) { memeGrid.innerHTML = ''; emptyMsg.hidden = false; }
-  else { emptyMsg.hidden = true; renderMemeCards(filtered); }
+function filterMemes() {
+  const visible = getVisibleMemes();
+  renderMemeCards(visible);
+  searchClear.classList.toggle('visible', Boolean(searchInput.value));
 }
 
-/* =====================================================
-   TAB LOADING
-   ===================================================== */
+function renderHeatmap() {
+  const counts = new Map();
+  currentMemes.forEach(meme => {
+    const titleWords = extractTags(meme.title, '').filter(tag => tag.length > 2 && !tag.includes('_'));
+    titleWords.forEach(tag => counts.set(tag, (counts.get(tag) || 0) + 1));
+  });
+  const items = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 24);
+  if (!items.length) { keywordHeatmap.innerHTML = '<span class="heatmap-placeholder">Waiting for more title signal…</span>'; return; }
+  const max = items[0][1];
+  keywordHeatmap.innerHTML = items.map(([tag, count], index) => {
+    const intensity = Math.max(1, Math.ceil((count / max) * 5));
+    return `<button type="button" class="heat-word heat-${intensity} ${activeTag === tag ? 'active' : ''}" data-tag="${escapeHtml(tag)}" style="--word-order:${index}"><span>#${escapeHtml(tag)}</span><small>${count}</small></button>`;
+  }).join('');
+  keywordHeatmap.querySelectorAll('.heat-word').forEach(btn => btn.addEventListener('click', () => setActiveTag(btn.dataset.tag)));
+}
+
+function setActiveTag(tag) {
+  activeTag = activeTag === tag ? '' : tag;
+  activeFilterRow.hidden = !activeTag;
+  clearTagBtn.hidden = !activeTag;
+  activeTagLabel.textContent = activeTag ? `#${activeTag}` : '';
+  renderHeatmap();
+  filterMemes();
+}
+
+function setDiscoveryVisibility(isGallery) {
+  document.querySelector('.discovery-panel').hidden = isGallery;
+  memeGrid.hidden = isGallery;
+  gallerySection.hidden = !isGallery;
+  infiniteScrollSentinel.hidden = isGallery;
+}
+
 async function loadTab(tab) {
   currentTab = tab;
+  activeTag = '';
+  activeFilterRow.hidden = true;
+  clearTagBtn.hidden = true;
   searchInput.value = '';
-  searchClear.classList.remove('visible');
   errorMsg.hidden = true;
   emptyMsg.hidden = true;
-  loadMoreBtn.disabled = false;
-
-  const isGallery = tab === 'gallery';
-  memeGrid.hidden          = isGallery;
-  gallerySection.hidden    = !isGallery;
-  loadMoreWrap.hidden      = isGallery;
-
-  if (isGallery) { renderGallery(); return; }
-
+  hasMore = true;
+  setDiscoveryVisibility(tab === 'gallery');
+  if (tab === 'gallery') { renderGallery(); return; }
   showSkeletons();
   try {
     currentMemes = await fetchForTab(tab);
+    cacheMemeTags(currentMemes);
     renderMemeCards(currentMemes);
-  } catch (err) {
-    console.error('Failed to load memes:', err);
-    showError();
+    renderHeatmap();
+  } catch (error) {
+    console.error('Failed to load memes:', error);
+    memeGrid.innerHTML = '';
+    errorMsg.hidden = false;
+    hasMore = false;
   }
 }
 
-/* =====================================================
-   CANVAS — IMAGE FILTER
-   ===================================================== */
-function applyCanvasFilter(filterStr) {
-  // We redraw the image with CSS-like filter using globalCompositeOperation tricks.
-  // For simplicity we store filter and draw at drawMeme time using ctx.filter.
-  activeFilter = filterStr;
-  drawMeme();
+async function loadMoreMemes() {
+  if (isLoadingMore || !hasMore || currentTab === 'gallery') return;
+  isLoadingMore = true;
+  infiniteScrollLabel.textContent = 'Loading the next drop…';
+  try {
+    const existing = new Set(currentMemes.map(meme => meme.url));
+    let fresh = [];
+    for (let attempt = 0; attempt < 2 && fresh.length === 0; attempt += 1) {
+      const more = await fetchForTab(currentTab);
+      fresh = more.filter(meme => !existing.has(meme.url));
+    }
+    if (!fresh.length) {
+      hasMore = false;
+      infiniteScrollLabel.textContent = 'You caught the whole drop for now';
+      return;
+    }
+    currentMemes = [...currentMemes, ...fresh];
+    cacheMemeTags(fresh);
+    appendMemeCards(getVisibleMemes().filter(meme => fresh.some(item => item.url === meme.url)));
+    renderHeatmap();
+    infiniteScrollLabel.textContent = 'Scroll for more drops';
+  } catch (error) {
+    console.warn('Infinite scroll failed:', error);
+    infiniteScrollLabel.textContent = 'Could not load more — keep scrolling to retry';
+  } finally {
+    isLoadingMore = false;
+  }
 }
 
-/* =====================================================
-   CANVAS — DRAWING
-   ===================================================== */
 function wrapText(text, maxWidth, fontSize) {
-  const words = text.split(' ');
   const lines = [];
   let current = '';
   ctx.font = `900 ${fontSize}px Impact, 'Arial Narrow', sans-serif`;
-  for (const word of words) {
+  text.split(' ').forEach(word => {
     const test = current ? `${current} ${word}` : word;
-    if (ctx.measureText(test).width > maxWidth && current) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = test;
-    }
-  }
+    if (ctx.measureText(test).width > maxWidth && current) { lines.push(current); current = word; } else current = test;
+  });
   if (current) lines.push(current);
   return lines;
 }
 
 function drawMemeText(text, id, fontSize, color) {
   if (!text.trim()) { textState[id].lines = []; return; }
-
-  const canvasW  = memeCanvas.width;
-  const padding  = 20;
-  const maxWidth = canvasW - padding * 2;
-
-  ctx.font         = `900 ${fontSize}px Impact, 'Arial Narrow', sans-serif`;
-  ctx.textAlign    = 'center';
+  const maxWidth = memeCanvas.width - 40;
+  ctx.font = `900 ${fontSize}px Impact, 'Arial Narrow', sans-serif`;
+  ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-
-  const lines  = wrapText(text.toUpperCase(), maxWidth, fontSize);
-  const lineH  = fontSize * 1.15;
-  textState[id].lines    = lines;
+  const lines = wrapText(text.toUpperCase(), maxWidth, fontSize);
+  const lineH = fontSize * 1.15;
+  textState[id].lines = lines;
   textState[id].fontSize = fontSize;
-
   lines.forEach((line, i) => {
     const x = textState[id].x;
     const y = textState[id].y + (i - (lines.length - 1) / 2) * lineH;
-
     if (textShadow) {
-      ctx.shadowColor   = 'rgba(0,0,0,0.9)';
-      ctx.shadowBlur    = 8;
-      ctx.shadowOffsetX = 3;
-      ctx.shadowOffsetY = 3;
-      ctx.fillStyle = color;
-      ctx.fillText(line, x, y);
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur  = 0;
-      ctx.shadowOffsetX = 0;
-      ctx.shadowOffsetY = 0;
+      ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 8; ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 3;
+      ctx.fillStyle = color; ctx.fillText(line, x, y);
+      ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
     } else {
-      ctx.lineWidth   = Math.max(3, fontSize / 10);
-      ctx.strokeStyle = '#000000';
-      ctx.lineJoin    = 'round';
-      ctx.strokeText(line, x, y);
-      ctx.fillStyle = color;
-      ctx.fillText(line, x, y);
+      ctx.lineWidth = Math.max(3, fontSize / 10); ctx.strokeStyle = '#000'; ctx.lineJoin = 'round'; ctx.strokeText(line, x, y); ctx.fillStyle = color; ctx.fillText(line, x, y);
     }
   });
 }
 
 function drawStickers() {
-  stickers.forEach(s => {
-    ctx.font = `${s.size}px serif`;
-    ctx.textAlign    = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(s.emoji, s.x, s.y);
-  });
+  stickers.forEach(sticker => { ctx.font = `${sticker.size}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(sticker.emoji, sticker.x, sticker.y); });
 }
 
 function drawMeme() {
   const W = memeCanvas.width;
   const H = memeCanvas.height;
   ctx.clearRect(0, 0, W, H);
-
-  // Apply image filter
-  ctx.filter = (activeFilter && activeFilter !== 'none') ? activeFilter : 'none';
-
-  if (chainImage && baseImage) {
-    // Two-panel: stack vertically
-    const halfH = H / 2;
-    drawImageContain(baseImage, 0, 0, W, halfH);
-    drawImageContain(chainImage, 0, halfH, W, halfH);
-  } else if (baseImage) {
-    drawImageContain(baseImage, 0, 0, W, H);
-  } else {
-    ctx.fillStyle = '#111111';
-    ctx.fillRect(0, 0, W, H);
-  }
-
+  ctx.filter = activeFilter !== 'none' ? activeFilter : 'none';
+  const imageSource = gifPlayer?.get_canvas?.() || baseImage;
+  if (chainImage && baseImage && !storyMode) {
+    drawImageContain(baseImage, 0, 0, W, H / 2);
+    drawImageContain(chainImage, 0, H / 2, W, H / 2);
+  } else if (imageSource) drawImageContain(imageSource, 0, 0, W, H);
+  else { ctx.fillStyle = '#111'; ctx.fillRect(0, 0, W, H); }
   ctx.filter = 'none';
-
-  const fontSize = parseInt(fontSizeInput.value, 10);
-  const color    = fontColorInput.value;
-  drawMemeText(topTextInput.value, 'top', fontSize, color);
-  drawMemeText(bottomTextInput.value, 'bottom', fontSize, color);
+  const fontSize = Number(fontSizeInput.value);
+  drawMemeText(topTextInput.value, 'top', fontSize, fontColorInput.value);
+  drawMemeText(bottomTextInput.value, 'bottom', fontSize, fontColorInput.value);
   drawStickers();
 }
 
-function drawImageContain(img, dx, dy, dw, dh) {
-  const iw = img.naturalWidth  || img.width;
-  const ih = img.naturalHeight || img.height;
+function drawImageContain(image, dx, dy, dw, dh) {
+  const iw = image.naturalWidth || image.videoWidth || image.width;
+  const ih = image.naturalHeight || image.videoHeight || image.height;
   if (!iw || !ih) return;
-  const scale  = Math.min(dw / iw, dh / ih);
-  const sw     = iw * scale;
-  const sh     = ih * scale;
-  const ox     = dx + (dw - sw) / 2;
-  const oy     = dy + (dh - sh) / 2;
-  ctx.fillStyle = '#111';
-  ctx.fillRect(dx, dy, dw, dh);
-  ctx.drawImage(img, ox, oy, sw, sh);
+  const scale = Math.min(dw / iw, dh / ih);
+  const sw = iw * scale; const sh = ih * scale;
+  const ox = dx + (dw - sw) / 2; const oy = dy + (dh - sh) / 2;
+  ctx.fillStyle = '#111'; ctx.fillRect(dx, dy, dw, dh); ctx.drawImage(image, ox, oy, sw, sh);
 }
 
-/* =====================================================
-   LOAD IMAGE TO CANVAS
-   ===================================================== */
 function loadImg(url) {
   return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload  = () => resolve(img);
-    img.onerror = () => {
-      const img2 = new Image();
-      img2.onload  = () => resolve(img2);
-      img2.onerror = reject;
-      img2.src = url;
-    };
-    img.src = getProxiedUrl(url);
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = getProxiedUrl(url);
   });
 }
 
-/* =====================================================
-   EDITOR — OPEN / CLOSE
-   ===================================================== */
-async function openEditor(imageUrl) {
-  currentImageUrl = imageUrl;
-  // Reset
-  topTextInput.value      = '';
-  bottomTextInput.value   = '';
-  fontSizeInput.value     = '36';
-  fontSizeVal.textContent = '36';
-  fontColorInput.value    = '#ffffff';
-  imageUpload.value       = '';
-  fileNameSpan.textContent = 'No file chosen';
-  chainImage    = null;
-  stickers      = [];
-  activeFilter  = 'none';
-  textShadow    = false;
-  styleOutlineBtn.classList.add('active');
-  styleShadowBtn.classList.remove('active');
-  document.querySelectorAll('.filter-pill').forEach(p => p.classList.toggle('active', p.dataset.filter === 'none'));
-  clearChainBtn.hidden  = true;
-  chainImageUrl.value   = '';
+function stopGifPlayback() {
+  if (gifFrameTimer) clearInterval(gifFrameTimer);
+  gifFrameTimer = null;
+  gifPlayer = null;
+  const hiddenGif = $('gif-source');
+  if (hiddenGif) hiddenGif.remove();
+}
 
-  textState.top    = { x: 250, y: 44,  lines: [], fontSize: 36 };
-  textState.bottom = { x: 250, y: 456, lines: [], fontSize: 36 };
-
-  const isGif = imageUrl && imageUrl.toLowerCase().endsWith('.gif');
-  gifBadge.hidden = !isGif;
-
-  modalOverlay.hidden = false;
-  document.body.style.overflow = 'hidden';
-
-  // Loading state
-  ctx.fillStyle = '#111111';
-  ctx.fillRect(0, 0, memeCanvas.width, memeCanvas.height);
-  ctx.fillStyle = '#555555';
-  ctx.font = '18px DM Sans, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('Loading image...', memeCanvas.width / 2, memeCanvas.height / 2);
-
+function setupGifPlayback(url) {
+  stopGifPlayback();
+  if (!/\.gif(?:\?|$)/i.test(url || '')) return;
+  gifBadge.hidden = false;
+  if (typeof window.SuperGif !== 'function') return;
+  const image = document.createElement('img');
+  image.id = 'gif-source'; image.alt = ''; image.src = getProxiedUrl(url); image.hidden = true;
+  canvasWrap.appendChild(image);
   try {
-    baseImage = await loadImg(imageUrl);
-  } catch (e) {
-    baseImage = null;
-    console.warn('Could not load image:', e);
-  }
+    gifPlayer = new window.SuperGif({ gif: image, auto_play: true, loop_mode: true });
+    gifPlayer.load(() => {
+      gifFrameTimer = setInterval(drawMeme, 80);
+      drawMeme();
+    });
+  } catch (error) { console.warn('GIF playback unavailable, using first frame:', error); }
+}
 
+function resizeCanvasForMode(nextStoryMode) {
+  storyMode = nextStoryMode;
+  memeCanvas.width = storyMode ? 540 : 500;
+  memeCanvas.height = storyMode ? 960 : 500;
+  textState.top = { x: memeCanvas.width / 2, y: storyMode ? 90 : 44, lines: [], fontSize: 36 };
+  textState.bottom = { x: memeCanvas.width / 2, y: storyMode ? memeCanvas.height - 90 : memeCanvas.height - 44, lines: [], fontSize: 36 };
+  storyBadge.hidden = !storyMode;
   drawMeme();
+}
 
-  // Check URL params to pre-fill text (shareable link)
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('img') === imageUrl) {
-    topTextInput.value    = params.get('top') || '';
-    bottomTextInput.value = params.get('bot') || '';
-    drawMeme();
-  }
+async function openEditor(imageUrl, title = 'MemeDrop meme') {
+  stopGifPlayback();
+  storyMode = false;
+  resizeCanvasForMode(false);
+  currentImageUrl = imageUrl || '';
+  currentMemeTitle = title;
+  topTextInput.value = ''; bottomTextInput.value = ''; fontSizeInput.value = '36'; fontSizeVal.textContent = '36'; fontColorInput.value = '#fff';
+  imageUpload.value = ''; fileNameSpan.textContent = 'No file chosen'; chainImage = null; stickers = []; activeFilter = 'none'; textShadow = false;
+  styleOutlineBtn.classList.add('active'); styleShadowBtn.classList.remove('active');
+  document.querySelectorAll('.filter-pill').forEach(pill => pill.classList.toggle('active', pill.dataset.filter === 'none'));
+  clearChainBtn.hidden = true; chainImageUrl.value = '';
+  gifBadge.hidden = !/\.gif(?:\?|$)/i.test(imageUrl || '');
+  modalOverlay.hidden = false; document.body.style.overflow = 'hidden';
+  ctx.fillStyle = '#111'; ctx.fillRect(0, 0, memeCanvas.width, memeCanvas.height);
+  ctx.fillStyle = '#777'; ctx.font = '18px DM Sans, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('Loading image…', memeCanvas.width / 2, memeCanvas.height / 2);
+  try { baseImage = await loadImg(imageUrl); } catch (error) { baseImage = null; showToast('Could not load this image cleanly.'); }
+  setupGifPlayback(imageUrl);
+  drawMeme();
+  const params = new URLSearchParams(location.search);
+  if (params.get('img') === imageUrl) { topTextInput.value = params.get('top') || ''; bottomTextInput.value = params.get('bot') || ''; drawMeme(); }
+  syncShareMeta();
 }
 
 function closeEditor() {
-  modalOverlay.hidden = true;
-  document.body.style.overflow = '';
-  ctx.clearRect(0, 0, memeCanvas.width, memeCanvas.height);
-  baseImage   = null;
-  chainImage  = null;
-  stickers    = [];
+  modalOverlay.hidden = true; document.body.style.overflow = ''; stopGifPlayback(); ctx.clearRect(0, 0, memeCanvas.width, memeCanvas.height); baseImage = null; chainImage = null; stickers = [];
 }
 
-/* =====================================================
-   DOWNLOAD & COPY
-   ===================================================== */
+function getShareUrl() {
+  const params = new URLSearchParams({ img: currentImageUrl, top: topTextInput.value, bot: bottomTextInput.value, og: '1' });
+  return `${location.origin}${location.pathname}?${params.toString()}`;
+}
+
+function getOgPreviewUrl() {
+  // Static-safe fallback: deployments with a serverless OG renderer can replace this URL
+  // with their renderer route; the source image keeps embeds valid on GitHub Pages/static hosts.
+  return currentImageUrl;
+}
+
+function setMeta(selector, value) {
+  const node = document.querySelector(selector);
+  if (node) node.setAttribute('content', value);
+}
+
+function syncShareMeta() {
+  if (!currentImageUrl) return;
+  const title = topTextInput.value || bottomTextInput.value ? `${topTextInput.value} ${bottomTextInput.value}`.trim() : currentMemeTitle;
+  const shareUrl = getShareUrl();
+  const previewUrl = location.protocol === 'file:' ? currentImageUrl : getOgPreviewUrl();
+  document.title = `${title} — MemeDrop`;
+  setMeta('meta[property="og:title"]', title);
+  setMeta('meta[property="og:image"]', previewUrl);
+  setMeta('meta[property="og:url"]', shareUrl);
+  setMeta('meta[name="twitter:title"]', title);
+  setMeta('meta[name="twitter:image"]', previewUrl);
+}
+
+function openIntent(url) { window.open(url, '_blank', 'noopener,noreferrer,width=720,height=640'); }
+
+function shareToNetwork(network) {
+  const shareUrl = getShareUrl();
+  const text = `${currentMemeTitle} — made with MemeDrop`;
+  const routes = {
+    x: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`,
+    whatsapp: `https://wa.me/?text=${encodeURIComponent(`${text} ${shareUrl}`)}`,
+    reddit: `https://www.reddit.com/submit?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(text)}`,
+  };
+  syncShareMeta();
+  openIntent(routes[network]);
+}
+
+async function nativeShare() {
+  const shareUrl = getShareUrl();
+  if (navigator.share) { try { await navigator.share({ title: currentMemeTitle, text: 'Made with MemeDrop', url: shareUrl }); return; } catch (error) { if (error.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(shareUrl); showToast('Share URL copied — paste it anywhere.'); } catch { prompt('Copy this shareable URL:', shareUrl); }
+}
+
+function downloadBlob(blob, name) {
+  const objectUrl = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = objectUrl; anchor.download = name; document.body.appendChild(anchor); anchor.click(); anchor.remove(); setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+
 function downloadMeme() {
-  try {
-    const dataUrl = memeCanvas.toDataURL('image/png');
-    const a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = `memedrop-${Date.now()}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    showToast('✅ Downloaded!');
-    bumpCounter();
-  } catch (e) {
-    console.error('Download failed:', e);
-    showToast('❌ Download failed. Try another image.');
-  }
+  memeCanvas.toBlob(blob => { if (!blob) return showToast('Download failed. Try another image.'); downloadBlob(blob, `memedrop-${Date.now()}.png`); showToast('Downloaded!'); bumpCounter(); }, 'image/png');
 }
 
 async function copyMeme() {
-  try {
-    const blob = await new Promise(r => memeCanvas.toBlob(r, 'image/png'));
-    if (!blob) throw new Error('Canvas empty');
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-    showToast('📋 Copied to clipboard!');
-    bumpCounter();
-  } catch (e) {
-    console.error('Copy failed:', e);
-    showToast('❌ Copy failed. Try downloading instead.');
-  }
+  try { const blob = await new Promise(resolve => memeCanvas.toBlob(resolve, 'image/png')); await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); showToast('Copied to clipboard!'); bumpCounter(); } catch { showToast('Copy failed. Try downloading instead.'); }
 }
 
-/* =====================================================
-   SAVE TO GALLERY
-   ===================================================== */
-const GALLERY_KEY = 'memedrop-gallery';
-
-function getGallery() {
-  try { return JSON.parse(localStorage.getItem(GALLERY_KEY)) || []; }
-  catch { return []; }
+function exportStory() {
+  resizeCanvasForMode(true);
+  memeCanvas.toBlob(blob => { if (!blob) return showToast('Story export failed.'); downloadBlob(blob, `memedrop-story-${Date.now()}.png`); showToast('9:16 Story exported!'); bumpCounter(); }, 'image/png');
 }
 
-function saveGallery(arr) {
-  localStorage.setItem(GALLERY_KEY, JSON.stringify(arr));
+function buildEmbedCode() {
+  const shareUrl = getShareUrl();
+  const previewUrl = getOgPreviewUrl();
+  const title = escapeHtml(currentMemeTitle);
+  return embedType.value === 'iframe'
+    ? `<iframe src="${escapeHtml(shareUrl)}" title="${title} — MemeDrop" width="100%" height="720" loading="lazy" style="border:0;border-radius:16px;overflow:hidden"></iframe>`
+    : `<a href="${escapeHtml(shareUrl)}" target="_blank" rel="noopener"><img src="${escapeHtml(previewUrl)}" alt="${title}" loading="lazy" style="display:block;max-width:100%;height:auto;border-radius:12px" /></a>`;
 }
 
+function openEmbed() { embedCode.value = buildEmbedCode(); embedOverlay.hidden = false; }
+
+function getGallery() { try { return JSON.parse(localStorage.getItem(GALLERY_KEY)) || []; } catch { return []; } }
+function saveGallery(items) { localStorage.setItem(GALLERY_KEY, JSON.stringify(items)); }
 function saveToGallery() {
-  try {
-    const dataUrl = memeCanvas.toDataURL('image/png');
-    const gallery = getGallery();
-    gallery.unshift({ id: Date.now(), dataUrl });
-    if (gallery.length > 30) gallery.length = 30; // cap at 30
-    saveGallery(gallery);
-    showToast('💾 Saved to gallery!');
-    bumpCounter();
-  } catch (e) {
-    console.error('Save failed:', e);
-    showToast('❌ Save failed. CORS issue with image.');
-  }
+  try { const items = getGallery(); items.unshift({ id: Date.now(), dataUrl: memeCanvas.toDataURL('image/png') }); if (items.length > 30) items.length = 30; saveGallery(items); showToast('Saved to gallery!'); bumpCounter(); } catch { showToast('Save failed. CORS may block this image.'); }
 }
-
 function renderGallery() {
-  const gallery = getGallery();
-  galleryGrid.innerHTML = '';
-  if (gallery.length === 0) {
-    galleryEmpty.hidden = false;
-    return;
-  }
-  galleryEmpty.hidden = true;
-  gallery.forEach(item => {
-    const card = document.createElement('div');
-    card.className = 'gallery-card';
-    card.innerHTML = `
-      <img src="${item.dataUrl}" alt="Saved meme" loading="lazy" />
-      <div class="gallery-card-actions">
-        <button class="gallery-action-btn" data-action="dl" data-id="${item.id}">⬇️ Download</button>
-        <button class="gallery-action-btn del" data-action="del" data-id="${item.id}">🗑 Delete</button>
-      </div>
-    `;
-    galleryGrid.appendChild(card);
-  });
+  const items = getGallery(); galleryGrid.innerHTML = ''; galleryEmpty.hidden = items.length > 0; if (!items.length) return;
+  items.forEach(item => { const card = document.createElement('div'); card.className = 'gallery-card'; card.innerHTML = `<img src="${item.dataUrl}" alt="Saved meme" loading="lazy" /><div class="gallery-card-actions"><button class="gallery-action-btn" data-action="dl" data-id="${item.id}">⬇️ Download</button><button class="gallery-action-btn del" data-action="del" data-id="${item.id}">🗑 Delete</button></div>`; galleryGrid.appendChild(card); });
 }
 
-galleryGrid.addEventListener('click', e => {
-  const btn = e.target.closest('.gallery-action-btn');
-  if (!btn) return;
-  const id      = Number(btn.dataset.id);
-  const gallery = getGallery();
-  const item    = gallery.find(g => g.id === id);
-  if (!item) return;
-
-  if (btn.dataset.action === 'dl') {
-    const a = document.createElement('a');
-    a.href = item.dataUrl;
-    a.download = `memedrop-gallery-${id}.png`;
-    a.click();
-  } else if (btn.dataset.action === 'del') {
-    const updated = gallery.filter(g => g.id !== id);
-    saveGallery(updated);
-    renderGallery();
-    showToast('🗑 Deleted from gallery.');
-  }
-});
-
-/* =====================================================
-   DRAGGABLE — CANVAS (text + stickers)
-   ===================================================== */
-function getCanvasPos(e) {
-  const rect   = memeCanvas.getBoundingClientRect();
-  const scaleX = memeCanvas.width  / rect.width;
-  const scaleY = memeCanvas.height / rect.height;
-  const src    = e.touches ? e.touches[0] : e;
-  return {
-    x: (src.clientX - rect.left) * scaleX,
-    y: (src.clientY - rect.top)  * scaleY,
-  };
+function getCanvasPos(event) {
+  const rect = memeCanvas.getBoundingClientRect(); const scaleX = memeCanvas.width / rect.width; const scaleY = memeCanvas.height / rect.height; const source = event.touches ? event.touches[0] : event; return { x: (source.clientX - rect.left) * scaleX, y: (source.clientY - rect.top) * scaleY };
 }
+function hitTestText(pos, id) { const state = textState[id]; if (!state.lines.length) return false; const lineH = state.fontSize * 1.15; const halfH = state.lines.length * lineH / 2; return pos.x > state.x - 240 && pos.x < state.x + 240 && pos.y > state.y - halfH && pos.y < state.y + halfH; }
+function hitTestSticker(pos, index) { const sticker = stickers[index]; const half = sticker.size / 2; return pos.x > sticker.x - half && pos.x < sticker.x + half && pos.y > sticker.y - half && pos.y < sticker.y + half; }
+function handleDragStart(event) { const pos = getCanvasPos(event); for (let i = stickers.length - 1; i >= 0; i -= 1) if (hitTestSticker(pos, i)) { isDragging = true; dragTarget = i; startMouseX = pos.x; startMouseY = pos.y; return; } if (hitTestText(pos, 'top')) dragTarget = 'top'; else if (hitTestText(pos, 'bottom')) dragTarget = 'bottom'; else return; isDragging = true; startMouseX = pos.x; startMouseY = pos.y; }
+function handleDragMove(event) { if (!isDragging) return; const pos = getCanvasPos(event); const dx = pos.x - startMouseX; const dy = pos.y - startMouseY; if (typeof dragTarget === 'number') { stickers[dragTarget].x += dx; stickers[dragTarget].y += dy; } else { textState[dragTarget].x += dx; textState[dragTarget].y += dy; } startMouseX = pos.x; startMouseY = pos.y; drawMeme(); }
+function handleDragEnd() { isDragging = false; dragTarget = null; }
 
-function hitTestText(pos, id) {
-  const s = textState[id];
-  if (!s.lines.length) return false;
-  const lineH = s.fontSize * 1.15;
-  const halfH = (s.lines.length * lineH) / 2;
-  return pos.x > s.x - 240 && pos.x < s.x + 240 &&
-         pos.y > s.y - halfH && pos.y < s.y + halfH;
-}
-
-function hitTestSticker(pos, idx) {
-  const s    = stickers[idx];
-  const half = s.size / 2;
-  return pos.x > s.x - half && pos.x < s.x + half &&
-         pos.y > s.y - half && pos.y < s.y + half;
-}
-
-function handleDragStart(e) {
-  const pos = getCanvasPos(e);
-  // Stickers checked first (on top)
-  for (let i = stickers.length - 1; i >= 0; i--) {
-    if (hitTestSticker(pos, i)) {
-      isDragging = true; dragTarget = i;
-      startMouseX = pos.x; startMouseY = pos.y;
-      memeCanvas.style.cursor = 'grabbing';
-      return;
-    }
-  }
-  if (hitTestText(pos, 'top')) {
-    isDragging = true; dragTarget = 'top';
-  } else if (hitTestText(pos, 'bottom')) {
-    isDragging = true; dragTarget = 'bottom';
-  }
-  if (isDragging) {
-    startMouseX = pos.x; startMouseY = pos.y;
-    memeCanvas.style.cursor = 'grabbing';
-  }
-}
-
-function handleDragMove(e) {
-  const pos = getCanvasPos(e);
-  if (isDragging) {
-    const dx = pos.x - startMouseX;
-    const dy = pos.y - startMouseY;
-    if (typeof dragTarget === 'number') {
-      stickers[dragTarget].x += dx;
-      stickers[dragTarget].y += dy;
-    } else {
-      textState[dragTarget].x += dx;
-      textState[dragTarget].y += dy;
-    }
-    startMouseX = pos.x; startMouseY = pos.y;
-    drawMeme();
-  } else {
-    const overText = hitTestText(pos, 'top') || hitTestText(pos, 'bottom');
-    const overSticker = stickers.some((_, i) => hitTestSticker(pos, i));
-    memeCanvas.style.cursor = (overText || overSticker) ? 'move' : 'default';
-  }
-}
-
-function handleDragEnd() {
-  isDragging = false;
-  dragTarget = null;
-  memeCanvas.style.cursor = 'default';
-}
-
-memeCanvas.addEventListener('mousedown', handleDragStart);
-window.addEventListener('mousemove', handleDragMove);
-window.addEventListener('mouseup', handleDragEnd);
-
-memeCanvas.addEventListener('touchstart', e => {
-  if (e.target === memeCanvas) e.preventDefault();
-  handleDragStart(e);
-}, { passive: false });
-window.addEventListener('touchmove', e => {
-  if (isDragging) e.preventDefault();
-  handleDragMove(e);
-}, { passive: false });
-window.addEventListener('touchend', handleDragEnd);
-
-/* =====================================================
-   STICKERS
-   ===================================================== */
-stickerRow.addEventListener('click', e => {
-  const btn = e.target.closest('.sticker-btn');
-  if (!btn || btn.id === 'clearStickers') return;
-  const emoji = btn.dataset.sticker;
-  const size  = 60;
-  // Place near center with slight random offset
-  stickers.push({
-    emoji,
-    x: memeCanvas.width  / 2 + (Math.random() - 0.5) * 100,
-    y: memeCanvas.height / 2 + (Math.random() - 0.5) * 100,
-    size,
-  });
-  drawMeme();
-  showToast(`${emoji} sticker added — drag it anywhere!`);
-});
-
-clearStickersBtn.addEventListener('click', () => {
-  stickers = [];
-  drawMeme();
-  showToast('🧹 Stickers cleared.');
-});
-
-/* =====================================================
-   TEXT STYLE TOGGLE
-   ===================================================== */
-styleOutlineBtn.addEventListener('click', () => {
-  textShadow = false;
-  styleOutlineBtn.classList.add('active');
-  styleShadowBtn.classList.remove('active');
-  drawMeme();
-});
-
-styleShadowBtn.addEventListener('click', () => {
-  textShadow = true;
-  styleShadowBtn.classList.add('active');
-  styleOutlineBtn.classList.remove('active');
-  drawMeme();
-});
-
-/* =====================================================
-   IMAGE FILTERS
-   ===================================================== */
-filterPills.addEventListener('click', e => {
-  const pill = e.target.closest('.filter-pill');
-  if (!pill) return;
-  document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
-  pill.classList.add('active');
-  applyCanvasFilter(pill.dataset.filter);
-});
-
-/* =====================================================
-   MEME CHAIN — TWO PANEL
-   ===================================================== */
-chainBtn.addEventListener('click', async () => {
-  const url = chainImageUrl.value.trim();
-  if (!url) { showToast('⚠️ Paste an image URL in the field below first.'); return; }
-  chainBtn.textContent = '⏳ Loading...';
-  try {
-    chainImage = await loadImg(url);
-    // Expand canvas height for two-panel
-    memeCanvas.height = 1000;
-    textState.bottom.y = 950;
-    clearChainBtn.hidden = false;
-    drawMeme();
-    showToast('🔗 Second panel added!');
-  } catch (e) {
-    showToast('❌ Could not load that image URL.');
-    chainImage = null;
-  }
-  chainBtn.textContent = '🔗 Add Second Panel';
-});
-
-clearChainBtn.addEventListener('click', () => {
-  chainImage = null;
-  memeCanvas.height = 500;
-  textState.bottom.y = 456;
-  clearChainBtn.hidden = true;
-  chainImageUrl.value = '';
-  drawMeme();
-  showToast('✂️ Second panel removed.');
-});
-
-/* =====================================================
-   SHAREABLE URL
-   ===================================================== */
-shareBtn.addEventListener('click', () => {
-  const params = new URLSearchParams({
-    img: currentImageUrl,
-    top: topTextInput.value,
-    bot: bottomTextInput.value,
-  });
-  const url = `${location.origin}${location.pathname}?${params.toString()}`;
-  navigator.clipboard.writeText(url).then(() => {
-    showToast('🔗 Share URL copied!');
-  }).catch(() => {
-    prompt('Copy this shareable URL:', url);
-  });
-});
-
-/* =====================================================
-   THEME TOGGLE
-   ===================================================== */
-function applyTheme(isLight) {
-  document.body.classList.toggle('light-mode', isLight);
-  themeIcon.textContent = isLight ? '🌙' : '☀️';
-  themeToggle.title     = isLight ? 'Switch to Dark Mode' : 'Switch to Light Mode';
-}
-
-themeToggle.addEventListener('click', () => {
-  const isLight = !document.body.classList.contains('light-mode');
-  applyTheme(isLight);
-  localStorage.setItem('memedrop-theme', isLight ? 'light' : 'dark');
-});
-
-/* =====================================================
-   FILTER TABS
-   ===================================================== */
-tabBtns.forEach(btn => {
-  btn.addEventListener('click', () => {
-    tabBtns.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
-    btn.classList.add('active');
-    btn.setAttribute('aria-selected', 'true');
-    loadTab(btn.dataset.tab);
-  });
-});
-
-/* =====================================================
-   SEARCH
-   ===================================================== */
-searchInput.addEventListener('input', () => {
-  const q = searchInput.value;
-  searchClear.classList.toggle('visible', q.length > 0);
-  filterMemesBySearch(q);
-});
-
-searchClear.addEventListener('click', () => {
-  searchInput.value = '';
-  searchClear.classList.remove('visible');
-  filterMemesBySearch('');
-  searchInput.focus();
-});
-
-/* =====================================================
-   LOAD MORE
-   ===================================================== */
-loadMoreBtn.addEventListener('click', async () => {
-  loadMoreBtn.disabled = true;
-  loadMoreBtn.innerHTML = '<span class="loading-spinner"></span> Loading...';
-  try {
-    let fresh = [];
-    let attempts = 0;
-    const existing = new Set(currentMemes.map(m => m.url));
-
-    while (fresh.length === 0 && attempts < 2) {
-      const more = await fetchForTab(currentTab);
-      fresh = more.filter(m => !existing.has(m.url));
-      attempts++;
-    }
-
-    if (fresh.length > 0) {
-      currentMemes = [...currentMemes, ...fresh];
-      appendMemeCards(fresh);
-      if (searchInput.value.trim()) filterMemesBySearch(searchInput.value);
-    } else {
-      showToast('No new memes found right now. Try another tab!');
-    }
-  } catch (e) {
-    showToast('❌ Failed to load more.');
-  }
-  loadMoreBtn.innerHTML = 'Load More Memes';
-  loadMoreBtn.disabled  = false;
-});
-
-/* =====================================================
-   MODAL CLOSE
-   ===================================================== */
+/* UI wiring */
+themeToggle.addEventListener('click', () => { const light = !document.body.classList.contains('light-mode'); document.body.classList.toggle('light-mode', light); themeIcon.textContent = light ? '🌙' : '☀️'; localStorage.setItem('memedrop-theme', light ? 'light' : 'dark'); });
+tabBtns.forEach(btn => btn.addEventListener('click', () => { tabBtns.forEach(item => { item.classList.remove('active'); item.setAttribute('aria-selected', 'false'); }); btn.classList.add('active'); btn.setAttribute('aria-selected', 'true'); loadTab(btn.dataset.tab); }));
+searchInput.addEventListener('input', filterMemes);
+searchClear.addEventListener('click', () => { searchInput.value = ''; filterMemes(); searchInput.focus(); });
+clearTagBtn.addEventListener('click', () => setActiveTag(''));
+subredditLoadBtn.addEventListener('click', () => { const name = subredditInput.value.trim(); if (!name) return showToast('Type a subreddit first.'); loadTab('custom'); });
+subredditInput.addEventListener('keydown', event => { if (event.key === 'Enter') subredditLoadBtn.click(); });
 modalClose.addEventListener('click', closeEditor);
-modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) closeEditor(); });
+modalOverlay.addEventListener('click', event => { if (event.target === modalOverlay) closeEditor(); });
 retryBtn.addEventListener('click', () => loadTab(currentTab));
-
-/* =====================================================
-   CANVAS INPUTS
-   ===================================================== */
-topTextInput.addEventListener('input', drawMeme);
-bottomTextInput.addEventListener('input', drawMeme);
+topTextInput.addEventListener('input', () => { drawMeme(); syncShareMeta(); });
+bottomTextInput.addEventListener('input', () => { drawMeme(); syncShareMeta(); });
 fontSizeInput.addEventListener('input', () => { fontSizeVal.textContent = fontSizeInput.value; drawMeme(); });
 fontColorInput.addEventListener('input', drawMeme);
-
-/* =====================================================
-   FILE UPLOAD
-   ===================================================== */
-imageUpload.addEventListener('change', e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  fileNameSpan.textContent = file.name.length > 28 ? file.name.substring(0, 25) + '...' : file.name;
-  const reader = new FileReader();
-  reader.onload = evt => {
-    const img = new Image();
-    img.onload = () => { baseImage = img; drawMeme(); };
-    img.src = evt.target.result;
-  };
-  reader.readAsDataURL(file);
-});
-
-/* =====================================================
-   DOWNLOAD / COPY / SAVE
-   ===================================================== */
+styleOutlineBtn.addEventListener('click', () => { textShadow = false; styleOutlineBtn.classList.add('active'); styleShadowBtn.classList.remove('active'); drawMeme(); });
+styleShadowBtn.addEventListener('click', () => { textShadow = true; styleShadowBtn.classList.add('active'); styleOutlineBtn.classList.remove('active'); drawMeme(); });
+filterPills.addEventListener('click', event => { const pill = event.target.closest('.filter-pill'); if (!pill) return; document.querySelectorAll('.filter-pill').forEach(item => item.classList.remove('active')); pill.classList.add('active'); activeFilter = pill.dataset.filter; drawMeme(); });
+stickerRow.addEventListener('click', event => { const btn = event.target.closest('.sticker-btn'); if (!btn || btn.id === 'clearStickers') return; stickers.push({ emoji: btn.dataset.sticker, x: memeCanvas.width / 2 + (Math.random() - 0.5) * 100, y: memeCanvas.height / 2 + (Math.random() - 0.5) * 100, size: 60 }); drawMeme(); showToast(`${btn.dataset.sticker} sticker added — drag it anywhere!`); });
+clearStickersBtn.addEventListener('click', () => { stickers = []; drawMeme(); showToast('Stickers cleared.'); });
+chainBtn.addEventListener('click', async () => { if (!chainImageUrl.value.trim()) return showToast('Paste a second image URL first.'); chainBtn.textContent = '⏳ Loading…'; try { chainImage = await loadImg(chainImageUrl.value.trim()); clearChainBtn.hidden = false; drawMeme(); showToast('Second panel added!'); } catch { showToast('Could not load that image URL.'); } chainBtn.textContent = '🔗 Add Second Panel'; });
+clearChainBtn.addEventListener('click', () => { chainImage = null; clearChainBtn.hidden = true; chainImageUrl.value = ''; drawMeme(); showToast('Second panel removed.'); });
+shareBtn.addEventListener('click', async () => { const url = getShareUrl(); syncShareMeta(); try { await navigator.clipboard.writeText(url); showToast('Share URL copied!'); } catch { prompt('Copy this shareable URL:', url); } });
+embedBtn.addEventListener('click', openEmbed);
+embedClose.addEventListener('click', () => { embedOverlay.hidden = true; });
+embedOverlay.addEventListener('click', event => { if (event.target === embedOverlay) embedOverlay.hidden = true; });
+embedType.addEventListener('change', () => { embedCode.value = buildEmbedCode(); });
+copyEmbedBtn.addEventListener('click', async () => { try { await navigator.clipboard.writeText(embedCode.value); showToast('Embed code copied!'); } catch { embedCode.select(); document.execCommand('copy'); showToast('Embed code copied!'); } });
+shareXBtn.addEventListener('click', () => shareToNetwork('x'));
+shareWhatsAppBtn.addEventListener('click', () => shareToNetwork('whatsapp'));
+shareRedditBtn.addEventListener('click', () => shareToNetwork('reddit'));
+nativeShareBtn.addEventListener('click', nativeShare);
+storyExportBtn.addEventListener('click', exportStory);
 downloadBtn.addEventListener('click', downloadMeme);
 copyBtn.addEventListener('click', copyMeme);
 saveGalleryBtn.addEventListener('click', saveToGallery);
+imageUpload.addEventListener('change', event => { const file = event.target.files?.[0]; if (!file) return; fileNameSpan.textContent = file.name.length > 28 ? `${file.name.slice(0, 25)}…` : file.name; const reader = new FileReader(); reader.onload = loadEvent => { const source = loadEvent.target.result; const image = new Image(); image.onload = () => { baseImage = image; currentImageUrl = source; gifBadge.hidden = !file.type.includes('gif'); setupGifPlayback(source); drawMeme(); }; image.src = source; }; reader.readAsDataURL(file); });
+galleryGrid.addEventListener('click', event => { const button = event.target.closest('.gallery-action-btn'); if (!button) return; const item = getGallery().find(entry => entry.id === Number(button.dataset.id)); if (!item) return; if (button.dataset.action === 'dl') { const anchor = document.createElement('a'); anchor.href = item.dataUrl; anchor.download = `memedrop-gallery-${item.id}.png`; anchor.click(); } else { saveGallery(getGallery().filter(entry => entry.id !== item.id)); renderGallery(); showToast('Deleted from gallery.'); } });
+memeCanvas.addEventListener('mousedown', handleDragStart); window.addEventListener('mousemove', handleDragMove); window.addEventListener('mouseup', handleDragEnd); memeCanvas.addEventListener('touchstart', event => { event.preventDefault(); handleDragStart(event); }, { passive: false }); window.addEventListener('touchmove', event => { if (isDragging) event.preventDefault(); handleDragMove(event); }, { passive: false }); window.addEventListener('touchend', handleDragEnd);
+document.addEventListener('keydown', event => { if (event.key === 'Escape' && !modalOverlay.hidden) closeEditor(); if ((event.key === 'd' || event.key === 'D') && !modalOverlay.hidden && !['input', 'textarea'].includes(document.activeElement.tagName.toLowerCase())) { event.preventDefault(); downloadMeme(); } });
 
-/* =====================================================
-   KEYBOARD SHORTCUTS
-   ===================================================== */
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && !modalOverlay.hidden) { closeEditor(); return; }
-  if ((e.key === 'd' || e.key === 'D') && !modalOverlay.hidden) {
-    if (!['input','textarea'].includes(document.activeElement.tagName.toLowerCase())) {
-      e.preventDefault(); downloadMeme();
-    }
-  }
-});
+const observer = new IntersectionObserver(entries => { if (entries[0].isIntersecting) loadMoreMemes(); }, { rootMargin: '500px 0px' });
+observer.observe(infiniteScrollSentinel);
 
-/* =====================================================
-   INIT
-   ===================================================== */
-document.addEventListener('DOMContentLoaded', () => {
-  applyTheme(localStorage.getItem('memedrop-theme') === 'light');
-
-  // Check if launched from a shareable URL
-  const params = new URLSearchParams(window.location.search);
-  const imgParam = params.get('img');
-
-  (async () => {
-    showSkeletons();
-    try {
-      currentMemes = await fetchFreshMemes();
-      renderMemeCards(currentMemes);
-      // Auto-open editor if share URL detected
-      if (imgParam) openEditor(imgParam);
-    } catch (err) {
-      console.error('Initial load failed:', err);
-      showError();
-    }
-  })();
+document.addEventListener('DOMContentLoaded', async () => {
+  const light = localStorage.getItem('memedrop-theme') === 'light'; document.body.classList.toggle('light-mode', light); themeIcon.textContent = light ? '🌙' : '☀️';
+  const params = new URLSearchParams(location.search); const imageParam = params.get('img');
+  if (imageParam) openEditor(imageParam, 'Shared MemeDrop meme');
+  await loadTab('fresh');
 });

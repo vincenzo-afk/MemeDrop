@@ -3,8 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MemeDrop 🔥 — Meme Generator & Gallery</title>
-  <meta name="description" content="MemeDrop: browse trending memes, add custom text, stickers, and save to your personal gallery." />
+  <title>MemeDrop — Meme Generator & Gallery</title>
+  <meta name="description" content="MemeDrop: browse, remix, animate, and share fresh memes with custom text, tags, and Story export." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="MemeDrop — Meme Generator & Gallery" />
+  <meta property="og:description" content="Browse the drop, remix a meme, and share it everywhere." />
+  <meta property="og:image" content="" />
+  <meta property="og:url" content="" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="MemeDrop — Meme Generator & Gallery" />
+  <meta name="twitter:description" content="Browse the drop, remix a meme, and share it everywhere." />
+  <meta name="twitter:image" content="" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -62,6 +71,40 @@
       <button class="search-clear" id="searchClear" aria-label="Clear search">✕</button>
     </div>
 
+    <!-- Discovery controls: editorial heatmap + any-subreddit input -->
+    <section class="discovery-panel" aria-label="Meme discovery tools">
+      <div class="discovery-topline">
+        <div>
+          <span class="eyebrow">FRESH DROP / LIVE SIGNALS</span>
+          <h1>Find the phrase everyone is repeating.</h1>
+        </div>
+        <div class="subreddit-picker">
+          <label for="subredditInput">Browse a subreddit</label>
+          <div class="subreddit-input-row">
+            <span class="subreddit-prefix">r/</span>
+            <input id="subredditInput" type="text" inputmode="text" autocomplete="off" placeholder="programmerhumor" aria-label="Subreddit name" />
+            <button class="mini-action" id="subredditLoadBtn" type="button">Open</button>
+          </div>
+          <span class="field-hint">Any public subreddit supported by meme-api.com</span>
+        </div>
+      </div>
+      <div class="heatmap-wrap">
+        <div class="heatmap-heading">
+          <div>
+            <span class="eyebrow">TITLE SIGNAL</span>
+            <h2>Trending keywords</h2>
+          </div>
+          <button class="mini-action ghost" id="clearTagBtn" type="button" hidden>Clear tag</button>
+        </div>
+        <div class="keyword-heatmap" id="keywordHeatmap" aria-live="polite">
+          <span class="heatmap-placeholder">Collecting the latest words…</span>
+        </div>
+        <div class="active-filter-row" id="activeFilterRow" hidden>
+          <span>Filtering by</span><strong id="activeTagLabel"></strong>
+        </div>
+      </div>
+    </section>
+
     <!-- Meme Grid -->
     <div class="meme-grid" id="memeGrid">
       <!-- Cards injected by JS -->
@@ -88,9 +131,9 @@
       <p>No memes matched your search.</p>
     </div>
 
-    <!-- Load More -->
-    <div class="load-more-wrap" id="loadMoreWrap">
-      <button class="load-more-btn" id="loadMoreBtn">Load More Memes</button>
+    <!-- IntersectionObserver target for seamless loading -->
+    <div class="infinite-scroll-sentinel" id="infiniteScrollSentinel" aria-hidden="true">
+      <span class="loading-spinner"></span><span id="infiniteScrollLabel">Scroll for more drops</span>
     </div>
 
   </main>
@@ -110,7 +153,8 @@
         <div class="canvas-wrap" id="canvasWrap">
           <canvas id="memeCanvas" width="500" height="500"></canvas>
           <!-- GIF indicator -->
-          <div class="gif-badge" id="gifBadge" hidden>GIF — Canvas is static snapshot</div>
+          <div class="gif-badge" id="gifBadge" hidden>GIF — animated preview</div>
+          <div class="story-badge" id="storyBadge" hidden>9:16 STORY</div>
         </div>
 
         <!-- Controls -->
@@ -202,6 +246,17 @@
             <span class="control-label">Shareable Link</span>
             <div class="btn-row">
               <button class="chain-btn" id="shareBtn">🔗 Copy Share URL</button>
+              <button class="chain-btn" id="embedBtn">▣ Embed</button>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <span class="control-label">Share this drop</span>
+            <div class="social-share-grid">
+              <button class="social-btn x" id="shareXBtn" type="button"><span>𝕏</span> X / Twitter</button>
+              <button class="social-btn whatsapp" id="shareWhatsAppBtn" type="button"><span>◉</span> WhatsApp</button>
+              <button class="social-btn reddit" id="shareRedditBtn" type="button"><span>●</span> Reddit</button>
+              <button class="social-btn native" id="nativeShareBtn" type="button"><span>↗</span> More</button>
             </div>
           </div>
 
@@ -209,6 +264,9 @@
           <div class="editor-actions">
             <button class="btn btn-download" id="downloadBtn">
               <span>⬇️</span> Download PNG
+            </button>
+            <button class="btn btn-story" id="storyExportBtn">
+              <span>▯</span> Export Story 9:16
             </button>
             <button class="btn btn-copy" id="copyBtn">
               <span>📋</span> Copy to Clipboard
@@ -227,6 +285,28 @@
   <!-- ===== TOAST ===== -->
   <div class="toast" id="toast" aria-live="polite"></div>
 
+  <!-- Embed code modal -->
+  <div class="embed-overlay" id="embedOverlay" hidden aria-modal="true" role="dialog" aria-label="Embed meme">
+    <div class="embed-card">
+      <button class="modal-close" id="embedClose" aria-label="Close embed dialog">✕</button>
+      <span class="eyebrow">PUBLISH / EMBED</span>
+      <h2>Drop this meme into a blog.</h2>
+      <p>Use an image snippet for a lightweight embed, or an iframe for the full MemeDrop editor view.</p>
+      <div class="embed-field">
+        <label for="embedType">Snippet type</label>
+        <select id="embedType">
+          <option value="img">Responsive image</option>
+          <option value="iframe">Editor iframe</option>
+        </select>
+      </div>
+      <textarea id="embedCode" class="embed-code" readonly aria-label="Embed code"></textarea>
+      <button class="btn btn-copy" id="copyEmbedBtn" type="button"><span>📋</span> Copy embed code</button>
+      <span class="field-hint">The preview image is generated from this meme's share URL.</span>
+    </div>
+  </div>
+
+  <!-- libgif.js powers animated GIF playback inside the editor canvas. -->
+  <script src="https://cdn.jsdelivr.net/npm/libgif@0.0.2/libgif.js" defer></script>
   <script src="script.js"></script>
 </body>
 </html>

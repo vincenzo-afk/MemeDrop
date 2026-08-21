@@ -1,0 +1,31 @@
+name: Static site validation
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  static-site-validation:
+    name: Static site validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validate static application files
+        run: |
+          node --check script.js
+          test -s index.html
+          test -s style.css
+          test -s README.md
+          git diff --check HEAD~1 HEAD || true
